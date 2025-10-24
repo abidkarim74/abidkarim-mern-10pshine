@@ -6,6 +6,7 @@ import { connect_db } from './database/db.js';
 import morgan from 'morgan';
 import cookieParser from "cookie-parser";
 import cors from 'cors';
+import notes_router from './routes/notes_routes.js';
 
 
 const app: Application = express()
@@ -25,7 +26,10 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser(process.env.SIGNING_SECRET || "my-secret"));
 app.use(morgan('dev'));
+
+
 app.use('/api/auth', auth_router);
+app.use('/api/notes', notes_router);
 
 
 app.listen(PORT, () => {
