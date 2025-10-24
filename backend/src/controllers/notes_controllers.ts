@@ -10,7 +10,10 @@ export const auth_notes_list = async (req: AuthenticatedRequest, res: Response) 
       return;
     }
 
-    const notes = await Note.find({ creator: req.user.id });
+    const notes = await Note.find({ creator: req.user.id }).populate({
+      path: 'creator',
+      select: '-password'
+    });
 
     res.status(200).json(notes);
 
@@ -29,7 +32,10 @@ export const general_notes_list = async (req: AuthenticatedRequest, res: Respons
     }
     const notes = await Note.find({
       creator: { $ne: req.user.id }
-    });
+    }).populate({
+      path: 'creator',
+      select: '-password'
+    });;
 
     res.status(200).json(notes);
 
