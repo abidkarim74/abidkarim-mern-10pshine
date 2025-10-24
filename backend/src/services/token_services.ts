@@ -7,7 +7,7 @@ export const generateAccessTokenFunc = (user: AuthenticatedUser) => {
     throw new Error('ACCESS_TOKEN_SECRET does not exist in .env!');
   }
   try {
-    const token = jwt.sign({ id: user.id, username: user.username}, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '2m' });
+    const token = jwt.sign({ id: user.id, username: user.username}, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10m' });
 
     return token;
 

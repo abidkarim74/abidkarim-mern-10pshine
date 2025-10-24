@@ -6,6 +6,8 @@ import GuestRoute from "./middleware/guestRoutes";
 import Home from "./pages/Home";
 import Header from "./components/Header";
 import { useAuth } from "./context/authContext";
+import CreateNote from "./pages/CreateNote";
+import MyNotes from "./pages/MyNotes";
 
 
 function App() {
@@ -16,6 +18,8 @@ function App() {
       {accessToken && <Header></Header>}
       <Routes>
         <Route path="/" element={<ProtectedRoutes><Home></Home></ProtectedRoutes>}></Route>
+        <Route path="/my-notes" element={<ProtectedRoutes><MyNotes></MyNotes></ProtectedRoutes>}></Route>
+        <Route path="/create-note" element={<ProtectedRoutes><CreateNote></CreateNote></ProtectedRoutes>}></Route>
         <Route path="/login" element={<GuestRoute><Login></Login></GuestRoute>}></Route>
         <Route path="/signup" element={<GuestRoute><Signup></Signup></GuestRoute>}></Route>
        
