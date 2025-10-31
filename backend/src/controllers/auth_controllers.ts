@@ -199,7 +199,7 @@ export const update_profile_image = async (req: AuthenticatedRequest, res: Respo
       res.status(401).json({ error: "You are not authorized to perform this task!" });
       return;
     }
-
+    
     let updatedData: any = {};
 
     if (req.file) {

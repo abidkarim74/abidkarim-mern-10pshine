@@ -1,17 +1,28 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authContext";
-import { useEffect, useState } from "react";
-import { Bell, Menu, X, LogOut, Home, FileText, Plus, User, Search } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Bell, Menu, X, LogOut, Home, FileText, Plus, User, Search, Heart} from "lucide-react";
 import MainLoading from "./MainLoading";
 import { useSearch } from "../context/searchContext";
+import { useNotifications } from "../context/notificationContext";
+import NotificationBarSimple from "./notifications";
 
 
 const Header = () => {
   const { logout, accessToken, user } = useAuth();
   const { setSearchParam } = useSearch();
+  const { unreadCount, notifications, markAsRead, markAllAsRead } = useNotifications();
 
   const location = useLocation();
   const navigate = useNavigate();
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   if (!accessToken) {
     return <MainLoading />;
@@ -20,27 +31,16 @@ const Header = () => {
   const userData = {
     name: user?.firstname && user?.lastname ? `${user.firstname} ${user.lastname}` : "User",
     avatar: user?.profile_pic || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face&auto=format",
-    notifications: 3
   };
-
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-
-  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const handleLogout = async () => {
     try {
       setLoading(true);
       setError(null);
       await logout();
-
     } catch (err) {
       setError("Failed to log out. Please try again.");
       console.error("Logout error:", err);
-
     } finally {
       setLoading(false);
     }
@@ -58,9 +58,16 @@ const Header = () => {
     setIsSearchOpen(!isSearchOpen);
   };
 
+  const toggleNotifications = () => {
+    setIsNotificationOpen(!isNotificationOpen);
+  };
+
+  const closeNotifications = () => {
+    setIsNotificationOpen(false);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (searchQuery.trim()) {
       if (location.pathname !== "/") {
         navigate("/");
@@ -75,6 +82,40 @@ const Header = () => {
     setIsSearchOpen(false);
     setSearchQuery("");
   };
+
+  const handleNotificationClick = (notificationId: string) => {
+    markAsRead(notificationId);
+  };
+
+  const formatTime = (timestamp: string) => {
+    const now = new Date();
+    const notificationTime = new Date(timestamp);
+    const diff = now.getTime() - notificationTime.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        closeNotifications();
+      }
+    };
+
+    if (isNotificationOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationOpen]);
 
   useEffect(() => {
     setSearchParam(searchQuery);
@@ -138,15 +179,86 @@ const Header = () => {
             </nav>
 
             <div className="hidden md:flex items-center space-x-3">
-              <div className="relative">
-                <button className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg hover:scale-110 border border-transparent hover:border-[#DC143C]/20">
+              <div className="relative" ref={notificationRef}>
+                <button 
+                  onClick={toggleNotifications}
+                  className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg hover:scale-110 border border-transparent hover:border-[#DC143C]/20 relative"
+                >
                   <Bell className="w-5 h-5" />
-                  {userData.notifications > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#DC143C] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse border border-white">
-                      {userData.notifications}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
+
+                {isNotificationOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto max-h-64">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                          <p>No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification._id}
+                            onClick={() => handleNotificationClick(notification._id)}
+                            className={`p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
+                              !notification.read ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                <Heart className="w-4 h-4 text-red-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-900">{notification.message}</p>
+                                {notification.note?.title && (
+                                  <p className="text-xs text-gray-500 mt-1 truncate">
+                                    "{notification.note.title}"
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {formatTime(notification.createdAt)}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {notifications.length > 0 && (
+                      <div className="p-3 border-t border-gray-200 bg-gray-50">
+                        <button
+                          onClick={closeNotifications}
+                          className="w-full text-center text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <Link 
@@ -189,15 +301,86 @@ const Header = () => {
             </div>
 
             <div className="flex md:hidden items-center space-x-2">
-              <div className="relative">
-                <button className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20">
+              <div className="relative" ref={notificationRef}>
+                <button 
+                  onClick={toggleNotifications}
+                  className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20"
+                >
                   <Bell className="w-5 h-5" />
-                  {userData.notifications > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[#DC143C] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse border border-white">
-                      {userData.notifications}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
+
+                {isNotificationOpen && (
+                  <div className="fixed top-16 left-4 right-4 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-80 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto max-h-56">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                          <p>No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification._id}
+                            onClick={() => handleNotificationClick(notification._id)}
+                            className={`p-4 border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
+                              !notification.read ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                <Heart className="w-4 h-4 text-red-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-900">{notification.message}</p>
+                                {notification.note?.title && (
+                                  <p className="text-xs text-gray-500 mt-1 truncate">
+                                    "{notification.note.title}"
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {formatTime(notification.createdAt)}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {notifications.length > 0 && (
+                      <div className="p-3 border-t border-gray-200 bg-gray-50">
+                        <button
+                          onClick={closeNotifications}
+                          className="w-full text-center text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button 
@@ -223,7 +406,6 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Mobile Search Overlay */}
         {isSearchOpen && (
           <div className="md:hidden absolute top-0 left-0 right-0 bottom-0 bg-white/95 backdrop-blur-md z-50 animate-in slide-in-from-top-5 duration-300">
             <div className="flex items-center h-16 px-4 border-b border-gray-200">
@@ -266,7 +448,6 @@ const Header = () => {
           </div>
         )}
 
-        {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 animate-in slide-in-from-top-5 duration-300">
             <div className="px-4 sm:px-6 lg:px-8 py-4">
@@ -353,6 +534,8 @@ const Header = () => {
           </div>
         )}
       </header>
+
+      <NotificationBarSimple />
 
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">

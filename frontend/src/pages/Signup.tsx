@@ -4,6 +4,7 @@ import { useAuth } from '../context/authContext';
 import { type SignupFormData } from '../interfaces/AuthInterfaces';
 import { type SignupErrors } from '../interfaces/AuthInterfaces';
 
+
 const Signup = () => {
   const [formData, setFormData] = useState<SignupFormData>({
     firstname: '',

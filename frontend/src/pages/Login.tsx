@@ -272,7 +272,6 @@ const Login = () => {
       </p>
     </div>
 
-    {/* Divider */}
     
 
 

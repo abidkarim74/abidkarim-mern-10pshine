@@ -4,6 +4,7 @@ import type { Note } from "../interfaces/NotesInterface";
 import { Calendar, MessageCircle, Heart, Clock, Eye } from "lucide-react";
 import { useSearch } from "../context/searchContext";
 import { useAuth } from "../context/authContext";
+import { io } from "socket.io-client";
 
 
 const Home = () => {
@@ -58,32 +59,54 @@ const Home = () => {
 
     try {
       setLiking(note_id);
-      
+
       const response = await postRequest("/notes/toogle-like", { note_id });
-      
-      setNotes(prevNotes => 
-        prevNotes?.map(note => {
-          if (note._id === note_id) {
-            return {
-              ...note,
-              likers: response.liked 
-                ? [...note.likers, user._id] 
-                : note.likers.filter(id => id !== user._id), 
-            };
-          }
-          return note;
-        }) || null
+
+      setNotes(
+        (prevNotes) =>
+          prevNotes?.map((note) => {
+            if (note._id === note_id) {
+              return {
+                ...note,
+                likers: response.liked
+                  ? [...note.likers, user._id]
+                  : note.likers.filter((id) => id !== user._id),
+              };
+            }
+            return note;
+          }) || null
       );
 
       if (selectedNote && selectedNote._id === note_id) {
-        setSelectedNote(prev => prev ? {
-          ...prev,
-          likers: response.liked 
-            ? [...prev.likers, user._id]
-            : prev.likers.filter(id => id !== user._id),
-        } : null);
+        setSelectedNote((prev) =>
+          prev
+            ? {
+                ...prev,
+                likers: response.liked
+                  ? [...prev.likers, user._id]
+                  : prev.likers.filter((id) => id !== user._id),
+              }
+            : null
+        );
       }
 
+      // Send socket notification when note is liked
+      if (response.liked) {
+        // Find the liked note to get creator info
+        const likedNote = notes?.find((note) => note._id === note_id);
+        if (likedNote && likedNote.creator._id !== user._id) {
+          // Import socket.io client and emit event
+          const socket = io("http://localhost:8080");
+          socket.emit("send_like_notification", {
+            recipientId: likedNote.creator._id,
+            senderId: user._id,
+            senderName: `${user.firstname} ${user.lastname}`,
+            noteId: note_id,
+            noteTitle: likedNote.title,
+            message: `${user.firstname} ${user.lastname} liked your note: "${likedNote.title}"`,
+          });
+        }
+      }
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || "Failed to like note";
       setError(errorMessage);
@@ -166,7 +189,7 @@ const Home = () => {
   const filteredNotes =
     notes?.filter((note) => {
       if (!search_param || search_param.trim() === "") return true;
-      
+
       const searchTerm = search_param.toLowerCase();
 
       return (
@@ -204,7 +227,8 @@ const Home = () => {
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 max-w-4xl mx-auto">
             <p className="text-blue-700 text-center font-medium">
               Showing results for: "{search_param}"
-              {filteredNotes.length > 0 && ` (${filteredNotes.length} notes found)`}
+              {filteredNotes.length > 0 &&
+                ` (${filteredNotes.length} notes found)`}
             </p>
           </div>
         )}
@@ -222,7 +246,7 @@ const Home = () => {
                   {filteredNotes.map((note, index) => {
                     const isLiked = isNoteLiked(note);
                     const likesCount = getLikesCount(note);
-                    
+
                     return (
                       <div
                         key={note._id}
@@ -277,24 +301,30 @@ const Home = () => {
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                           <div className="flex items-center space-x-4 text-gray-500">
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggle_like(note._id);
                               }}
                               disabled={liking === note._id || !user}
                               className={`flex items-center space-x-1 transition-colors ${
-                                isLiked 
-                                  ? "text-[#DC143C]" 
+                                isLiked
+                                  ? "text-[#DC143C]"
                                   : "hover:text-[#DC143C]"
-                              } ${liking === note._id ? "opacity-50 cursor-not-allowed" : ""}`}
+                              } ${
+                                liking === note._id
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }`}
                             >
-                              <Heart 
-                                className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} 
+                              <Heart
+                                className={`w-4 h-4 ${
+                                  isLiked ? "fill-current" : ""
+                                }`}
                               />
                               <span className="text-sm">{likesCount}</span>
                             </button>
-                            <button 
+                            <button
                               className="lg:hidden flex items-center space-x-1 hover:text-blue-600 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -342,7 +372,8 @@ const Home = () => {
                       )}
                     </div>
                     <h4 className="text-base font-bold mb-1">
-                      {selectedNote.creator.firstname} {selectedNote.creator.lastname}
+                      {selectedNote.creator.firstname}{" "}
+                      {selectedNote.creator.lastname}
                     </h4>
                     <p className="text-white/80 text-xs">
                       @{selectedNote.creator.username}
@@ -371,20 +402,27 @@ const Home = () => {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <button 
+                      <button
                         onClick={() => toggle_like(selectedNote._id)}
                         disabled={liking === selectedNote._id || !user}
                         className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                           isNoteLiked(selectedNote)
                             ? "bg-[#DC143C] text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        } ${liking === selectedNote._id ? "opacity-50 cursor-not-allowed" : ""}`}
+                        } ${
+                          liking === selectedNote._id
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
                       >
-                        <Heart 
-                          className={`w-4 h-4 ${isNoteLiked(selectedNote) ? "fill-current" : ""}`} 
+                        <Heart
+                          className={`w-4 h-4 ${
+                            isNoteLiked(selectedNote) ? "fill-current" : ""
+                          }`}
                         />
                         <span>
-                          {isNoteLiked(selectedNote) ? "Liked" : "Like"} • {getLikesCount(selectedNote)}
+                          {isNoteLiked(selectedNote) ? "Liked" : "Like"} •{" "}
+                          {getLikesCount(selectedNote)}
                         </span>
                       </button>
 
@@ -439,8 +477,10 @@ const Home = () => {
           <div className="fixed top-20 left-4 right-4 bg-white rounded-2xl shadow-2xl max-h-[70vh] overflow-y-auto">
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Note Preview</h3>
-                <button 
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Note Preview
+                </h3>
+                <button
                   onClick={closeMobilePreview}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -464,7 +504,8 @@ const Home = () => {
                   )}
                 </div>
                 <h4 className="text-base font-bold mb-1">
-                  {selectedNote.creator.firstname} {selectedNote.creator.lastname}
+                  {selectedNote.creator.firstname}{" "}
+                  {selectedNote.creator.lastname}
                 </h4>
                 <p className="text-white/80 text-xs">
                   @{selectedNote.creator.username}
@@ -493,20 +534,27 @@ const Home = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <button 
+                  <button
                     onClick={() => toggle_like(selectedNote._id)}
                     disabled={liking === selectedNote._id || !user}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                       isNoteLiked(selectedNote)
                         ? "bg-[#DC143C] text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    } ${liking === selectedNote._id ? "opacity-50 cursor-not-allowed" : ""}`}
+                    } ${
+                      liking === selectedNote._id
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
                   >
-                    <Heart 
-                      className={`w-4 h-4 ${isNoteLiked(selectedNote) ? "fill-current" : ""}`} 
+                    <Heart
+                      className={`w-4 h-4 ${
+                        isNoteLiked(selectedNote) ? "fill-current" : ""
+                      }`}
                     />
                     <span>
-                      {isNoteLiked(selectedNote) ? "Liked" : "Like"} • {getLikesCount(selectedNote)}
+                      {isNoteLiked(selectedNote) ? "Liked" : "Like"} •{" "}
+                      {getLikesCount(selectedNote)}
                     </span>
                   </button>
 
@@ -533,6 +581,5 @@ const Home = () => {
     </div>
   );
 };
-
 
 export default Home;
