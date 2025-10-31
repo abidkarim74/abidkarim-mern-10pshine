@@ -1,4 +1,5 @@
 export interface Note {
+  _id: string;
   content: string;
   createdAt: string;
   title: string
@@ -9,4 +10,5 @@ export interface Note {
     username: string;
     _id: string;
   };
+  likers: string[]
 }

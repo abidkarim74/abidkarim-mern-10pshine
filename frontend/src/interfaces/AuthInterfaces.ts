@@ -1,5 +1,5 @@
 export interface AuthUser {
-  id: string,
+  _id: string,
   username: string,
   profile_pic: string,
   firstname: string,
