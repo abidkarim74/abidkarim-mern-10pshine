@@ -1,30 +1,37 @@
 import { getRequest } from "../api/requests";
 import { useEffect, useState } from "react";
 import type { Note } from "../interfaces/NotesInterface";
-import {
-  Calendar,
-  User,
-  MessageCircle,
-  Heart,
-  Share2,
-  Clock,
-} from "lucide-react";
+import { Calendar, MessageCircle, Heart, Clock, Eye } from "lucide-react";
+import { useSearch } from "../context/searchContext";
 
 
 const Home = () => {
+  const { search_param } = useSearch();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
   const [notes, setNotes] = useState<Note[] | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+
   const endpoint = "/notes/general-notes";
 
-  const fetchNotes = async () => {
+  const fetchNotes = async (searchQuery?: string) => {
     try {
       setLoading(true);
-      const response = await getRequest(endpoint);
+      let url = endpoint;
+
+      if (searchQuery && searchQuery.trim() !== "") {
+        url += `?search=${encodeURIComponent(searchQuery.trim())}`;
+      }
+      const response = await getRequest(url);
       setNotes(response);
+
       if (response && response.length > 0) {
         setSelectedNote(response[0]);
+
+      } else {
+        setSelectedNote(null);
       }
     } catch (err: any) {
       const errorMessage =
@@ -32,6 +39,7 @@ const Home = () => {
         err.message ||
         "Failed to fetch notes. Please try again.";
       setError(errorMessage);
+
     } finally {
       setLoading(false);
     }
@@ -41,18 +49,37 @@ const Home = () => {
     fetchNotes();
   }, []);
 
+  useEffect(() => {
+    if (search_param !== undefined) {
+      const timeoutId = setTimeout(() => {
+        fetchNotes(search_param);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [search_param]);
+
+  const handleNoteClick = (note: Note) => {
+    setSelectedNote(note);
+    setShowMobilePreview(true);
+  };
+
+  const closeMobilePreview = () => {
+    setShowMobilePreview(false);
+  };
+
   const formatDate = (dateString: string) => {
     try {
       const datePart = dateString.substring(0, 10);
       const timePart = dateString.substring(10);
+
       const fixedTimePart = timePart.substring(1);
+
       const properDateString = `${datePart}T${fixedTimePart}`;
       const date = new Date(properDateString);
 
       if (isNaN(date.getTime())) {
         throw new Error("Invalid date");
       }
-
       return date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
@@ -71,13 +98,14 @@ const Home = () => {
       const datePart = dateString.substring(0, 10);
       const timePart = dateString.substring(10);
       const fixedTimePart = timePart.substring(1);
+
       const properDateString = `${datePart}T${fixedTimePart}`;
       const date = new Date(properDateString);
 
       if (isNaN(date.getTime())) {
         throw new Error("Invalid date");
+      
       }
-
       return date.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
@@ -86,6 +114,18 @@ const Home = () => {
       return "";
     }
   };
+
+  const filteredNotes =
+    notes?.filter((note) => {
+      if (!search_param || search_param.trim() === "") return true;
+      
+      const searchTerm = search_param.toLowerCase();
+
+      return (
+        note.content.toLowerCase().includes(searchTerm) ||
+        (note.title && note.title.toLowerCase().includes(searchTerm))
+      );
+    }) || [];
 
   if (loading) {
     return (
@@ -96,7 +136,7 @@ const Home = () => {
             <div className="w-16 h-16 border-4 border-[#DC143C]/20 border-t-[#DC143C] rounded-full animate-spin absolute top-2 left-1/2 transform -translate-x-1/2"></div>
           </div>
           <p className="text-blue-900 text-xl font-medium animate-pulse">
-            Loading EPIC Notes...
+            {search_param ? "Searching notes..." : "Loading EPIC Notes..."}
           </p>
         </div>
       </div>
@@ -112,18 +152,26 @@ const Home = () => {
           </div>
         )}
 
-        {notes && notes.length > 0 ? (
+        {search_param && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 max-w-4xl mx-auto">
+            <p className="text-blue-700 text-center font-medium">
+              Showing results for: "{search_param}"
+              {filteredNotes.length > 0 && ` (${filteredNotes.length} notes found)`}
+            </p>
+          </div>
+        )}
+
+        {filteredNotes && filteredNotes.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {/* Notes List */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h2 className="text-2xl font-bold text-blue-900 mb-6 flex items-center">
                   <MessageCircle className="w-6 h-6 mr-3 text-[#DC143C]" />
-                  Latest Notes
+                  {search_param ? "Search Results" : "Latest Notes"}
                 </h2>
 
                 <div className="space-y-4">
-                  {notes.map((note, index) => (
+                  {filteredNotes.map((note, index) => (
                     <div
                       key={note._id}
                       onClick={() => setSelectedNote(note)}
@@ -138,10 +186,7 @@ const Home = () => {
                           <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex items-center justify-center bg-gradient-to-r from-blue-600 to-[#DC143C]">
                             {note.creator.profile_pic ? (
                               <img
-                                src={
-                                  `http://localhost:8080` +
-                                  note.creator.profile_pic
-                                }
+                                src={`http://localhost:8080` + note.creator.profile_pic}
                                 alt={`${note.creator.firstname} ${note.creator.lastname}`}
                                 className="w-full h-full object-cover"
                               />
@@ -175,7 +220,7 @@ const Home = () => {
                       </div>
 
                       <p className="text-gray-800 text-lg leading-relaxed mb-4 line-clamp-3">
-                        {note.content}
+                        {note.title}
                       </p>
 
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
@@ -184,9 +229,19 @@ const Home = () => {
                             <Heart className="w-4 h-4" />
                             <span className="text-sm">24</span>
                           </button>
+                          <button 
+                            className="lg:hidden flex items-center space-x-1 hover:text-blue-600 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleNoteClick(note);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span className="text-sm">View</span>
+                          </button>
                         </div>
                         <div className="text-xs text-gray-400">
-                          #{index + 1} in feed
+                          #{index + 1} in {search_param ? "results" : "feed"}
                         </div>
                       </div>
                     </div>
@@ -195,62 +250,69 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Selected Note Preview */}
-            <div className="space-y-6">
+            <div className="hidden lg:block space-y-6">
               {selectedNote && (
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 sticky top-6">
-                  <div className="text-center mb-6">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sticky top-6">
+                  <div className="text-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       Currently Viewing
                     </h3>
                     <div className="w-16 h-1 bg-gradient-to-r from-blue-600 to-[#DC143C] rounded-full mx-auto"></div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-blue-600 to-[#DC143C] rounded-xl p-8 text-white text-center mb-6">
-                    <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white/30">
+                  <div className="bg-gradient-to-br from-blue-600 to-[#DC143C] rounded-xl p-4 text-white text-center mb-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-white/30">
                       {selectedNote.creator.profile_pic ? (
                         <img
                           src={`http://localhost:8080` + selectedNote.creator.profile_pic}
                           alt={`${selectedNote.creator.firstname} ${selectedNote.creator.lastname}`}
-                          className="w-10 h-10 rounded-full object-cover shadow-md"
+                          className="w-6 h-6 rounded-full object-cover"
                         />
                       ) : (
-                        <span className="text-2xl font-bold">
+                        <span className="text-lg font-bold">
                           {selectedNote.creator.firstname[0]}
                           {selectedNote.creator.lastname[0]}
                         </span>
                       )}
                     </div>
-                    <h4 className="text-xl font-bold mb-2">
-                      {selectedNote.creator.firstname}{" "}
-                      {selectedNote.creator.lastname}
+                    <h4 className="text-base font-bold mb-1">
+                      {selectedNote.creator.firstname} {selectedNote.creator.lastname}
                     </h4>
-                    <p className="text-white/80 text-sm">
+                    <p className="text-white/80 text-xs">
                       @{selectedNote.creator.username}
                     </p>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div>
-                      <h5 className="text-sm font-semibold text-gray-700 mb-2">
+                      <h5 className="text-xs font-semibold text-gray-700 mb-1">
+                        Note Title
+                      </h5>
+                      <div className="bg-gray-50 rounded p-3 border border-gray-200 mb-3">
+                        <p className="text-gray-900 text-base font-bold">
+                          {selectedNote.title}
+                        </p>
+                      </div>
+
+                      <h5 className="text-xs font-semibold text-gray-700 mb-1">
                         Note Content
                       </h5>
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <p className="text-gray-800 text-lg leading-relaxed italic">
+                      <div className="bg-gray-50 rounded p-3 border border-gray-200">
+                        <p className="text-gray-800 text-sm leading-relaxed italic">
                           "{selectedNote.content}"
                         </p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="bg-blue-50 rounded-lg p-3 text-center">
-                        <Calendar className="w-4 h-4 mx-auto mb-1 text-blue-600" />
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="bg-blue-50 rounded p-2 text-center">
+                        <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
                         <div className="text-blue-900 font-medium">
                           {formatDate(selectedNote.createdAt)}
                         </div>
                       </div>
-                      <div className="bg-red-50 rounded-lg p-3 text-center">
-                        <Clock className="w-4 h-4 mx-auto mb-1 text-[#DC143C]" />
+                      <div className="bg-red-50 rounded p-2 text-center">
+                        <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
                         <div className="text-[#DC143C] font-medium">
                           {formatTime(selectedNote.createdAt)}
                         </div>
@@ -265,21 +327,105 @@ const Home = () => {
           !loading && (
             <div className="text-center py-16">
               <div className="w-32 h-32 bg-gradient-to-r from-blue-600 to-[#DC143C] rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl">
-                <span className="text-4xl text-white">📝</span>
+                <span className="text-4xl text-white">
+                  {search_param ? "" : ""}
+                </span>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                No Notes Yet
+                {search_param ? "No Notes Found" : "No Notes Yet"}
               </h3>
               <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
-                Be the first to create an epic note and inspire the community!
+                {search_param
+                  ? `No notes found matching "${search_param}". Try different keywords.`
+                  : "Be the first to create an epic note and inspire the community!"}
               </p>
-              <button className="bg-gradient-to-r from-blue-600 to-[#DC143C] text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300">
-                Create First Note
-              </button>
+              {!search_param && (
+                <button className="bg-gradient-to-r from-blue-600 to-[#DC143C] text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300">
+                  Create First Note
+                </button>
+              )}
             </div>
           )
         )}
       </div>
+
+      {showMobilePreview && selectedNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 lg:hidden">
+          <div className="fixed top-20 left-4 right-4 bg-white rounded-2xl shadow-2xl max-h-[70vh] overflow-y-auto">
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Note Preview</h3>
+                <button 
+                  onClick={closeMobilePreview}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-600 to-[#DC143C] rounded-xl p-4 text-white text-center mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-white/30">
+                  {selectedNote.creator.profile_pic ? (
+                    <img
+                      src={`http://localhost:8080` + selectedNote.creator.profile_pic}
+                      alt={`${selectedNote.creator.firstname} ${selectedNote.creator.lastname}`}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg font-bold">
+                      {selectedNote.creator.firstname[0]}
+                      {selectedNote.creator.lastname[0]}
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-base font-bold mb-1">
+                  {selectedNote.creator.firstname} {selectedNote.creator.lastname}
+                </h4>
+                <p className="text-white/80 text-xs">
+                  @{selectedNote.creator.username}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h5 className="text-xs font-semibold text-gray-700 mb-1">
+                    Note Title
+                  </h5>
+                  <div className="bg-gray-50 rounded p-3 border border-gray-200 mb-3">
+                    <p className="text-gray-900 text-base font-bold">
+                      {selectedNote.title}
+                    </p>
+                  </div>
+
+                  <h5 className="text-xs font-semibold text-gray-700 mb-1">
+                    Note Content
+                  </h5>
+                  <div className="bg-gray-50 rounded p-3 border border-gray-200">
+                    <p className="text-gray-800 text-sm leading-relaxed italic">
+                      "{selectedNote.content}"
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-blue-50 rounded p-2 text-center">
+                    <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
+                    <div className="text-blue-900 font-medium">
+                      {formatDate(selectedNote.createdAt)}
+                    </div>
+                  </div>
+                  <div className="bg-red-50 rounded p-2 text-center">
+                    <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
+                    <div className="text-[#DC143C] font-medium">
+                      {formatTime(selectedNote.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

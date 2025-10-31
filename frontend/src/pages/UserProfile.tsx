@@ -3,12 +3,9 @@ import { uploadFileRequest } from "../api/requests";
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { User,X, Edit, FileText, Camera, Upload, Check, RotateCcw } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 
 const UserProfile = () => {
-  const navigation = useNavigate();
-
   const [imageLoading, setImageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -17,9 +14,7 @@ const UserProfile = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { user } = useAuth();
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
-
 
   const handleEditImage = () => {
     setIsEditingImage(true);
@@ -43,12 +38,9 @@ const UserProfile = () => {
       await uploadFileRequest("/auth/update-profile-picture", formData);
 
       setSuccess("Profile picture updated successfully!");
-
       setIsEditingImage(false);
       setSelectedImage(null);
       setSelectedFile(null);
-
-
       
       setTimeout(() => setSuccess(null), 3000);
       
@@ -71,7 +63,6 @@ const UserProfile = () => {
     setSelectedImage(null);
     setSelectedFile(null);
     
-    // Clear the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -125,54 +116,50 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-4">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-900 to-[#DC143C] bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-900 to-[#DC143C] bg-clip-text text-transparent mb-3">
             My Profile
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600">
             Manage your profile picture and account information
           </p>
         </div>
 
-        {/* Success Message */}
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-8 max-w-2xl mx-auto">
-            <p className="text-green-700 text-center text-lg">✅ {success}</p>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+            <p className="text-green-700 text-center">✅ {success}</p>
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-8 max-w-2xl mx-auto">
-            <p className="text-red-700 text-center text-lg">🚨 {error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <p className="text-red-700 text-center">🚨 {error}</p>
           </div>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
           
-          {/* Profile Card */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-blue-900">Profile Information</h2>
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+                <h2 className="text-xl font-bold text-blue-900">Profile Information</h2>
                 {!isEditingImage ? (
                   <button 
                     onClick={handleEditImage}
-                    className="flex items-center text-[#DC143C] hover:text-[#DC143C]/80 hover:bg-[#DC143C]/5 px-4 py-2 rounded-xl transition-all duration-200 border border-[#DC143C]/30"
+                    className="flex items-center justify-center text-[#DC143C] hover:text-[#DC143C]/80 hover:bg-[#DC143C]/5 px-4 py-2 rounded-lg transition-all duration-200 border border-[#DC143C]/30 w-full sm:w-auto"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Change Photo
                   </button>
                 ) : (
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 w-full sm:w-auto">
                     <button 
                       onClick={handleSaveImage}
                       disabled={imageLoading || !selectedFile}
-                      className="flex items-center text-green-600 hover:text-green-700 hover:bg-green-50 px-4 py-2 rounded-xl transition-all duration-200 border border-green-300 disabled:opacity-50"
+                      className="flex items-center justify-center text-green-600 hover:text-green-700 hover:bg-green-50 px-4 py-2 rounded-lg transition-all duration-200 border border-green-300 disabled:opacity-50 flex-1 sm:flex-none"
                     >
                       {imageLoading ? (
                         <div className="w-4 h-4 border-2 border-gray-300 border-t-[#DC143C] rounded-full animate-spin mr-2"></div>
@@ -184,7 +171,7 @@ const UserProfile = () => {
                     <button 
                       onClick={handleCancelEdit}
                       disabled={imageLoading}
-                      className="flex items-center text-gray-600 hover:text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl transition-all duration-200 border border-gray-300 disabled:opacity-50"
+                      className="flex items-center justify-center text-gray-600 hover:text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg transition-all duration-200 border border-gray-300 disabled:opacity-50 flex-1 sm:flex-none"
                     >
                       <X className="w-4 h-4 mr-2" />
                       Cancel
@@ -194,16 +181,14 @@ const UserProfile = () => {
               </div>
 
               <div className="space-y-6">
-                {/* Profile Picture Section */}
-                <div className="flex items-center space-x-6">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
                   <div className="relative group">
                     <div 
-                      className={`w-24 h-24 bg-gradient-to-r from-blue-600 to-[#DC143C] rounded-full flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300 ${
+                      className={`w-20 h-20 bg-gradient-to-r from-blue-600 to-[#DC143C] rounded-full flex items-center justify-center shadow-lg overflow-hidden transition-all duration-300 ${
                         isEditingImage ? 'cursor-pointer hover:scale-105' : ''
                       }`}
                       onClick={isEditingImage ? handleProfilePictureClick : undefined}
                     >
-                      {/* Show selected image preview, then current profile pic, then initials */}
                       {selectedImage ? (
                         <img 
                           src={selectedImage} 
@@ -217,29 +202,27 @@ const UserProfile = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-white font-bold text-2xl">
+                        <span className="text-white font-bold text-xl">
                           {getInitials(user.firstname, user.lastname)}
                         </span>
                       )}
                       
-                      {/* Overlay with camera icon when editing */}
                       {isEditingImage && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full">
-                          <Camera className="w-8 h-8 text-white" />
+                          <Camera className="w-6 h-6 text-white" />
                         </div>
                       )}
                     </div>
                     
-                    {/* Edit badge when not editing */}
                     {!isEditingImage && (
-                      <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#DC143C] rounded-full flex items-center justify-center border-2 border-white">
-                        <Edit className="w-4 h-4 text-white" />
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#DC143C] rounded-full flex items-center justify-center border-2 border-white">
+                        <Edit className="w-3 h-3 text-white" />
                       </div>
                     )}
                   </div>
 
-                  <div className="text-left">
-                    <h3 className="text-2xl font-bold text-blue-900 mb-1">
+                  <div>
+                    <h3 className="text-xl font-bold text-blue-900 mb-1">
                       {user.firstname} {user.lastname}
                     </h3>
                     <p className="text-gray-600 text-sm">@{user.username}</p>
@@ -249,7 +232,7 @@ const UserProfile = () => {
                         <button
                           onClick={handleProfilePictureClick}
                           disabled={imageLoading}
-                          className="flex items-center text-[#DC143C] hover:text-[#DC143C]/80 text-sm transition-colors duration-200 disabled:opacity-50"
+                          className="flex items-center justify-center text-[#DC143C] hover:text-[#DC143C]/80 text-sm transition-colors duration-200 disabled:opacity-50 mx-auto sm:mx-0"
                         >
                           <Upload className="w-3 h-3 mr-1" />
                           {selectedFile ? "Change Image" : "Select Image"}
@@ -259,7 +242,7 @@ const UserProfile = () => {
                           <button
                             onClick={handleCancelEdit}
                             disabled={imageLoading}
-                            className="flex items-center text-gray-500 hover:text-gray-700 text-sm transition-colors duration-200 disabled:opacity-50"
+                            className="flex items-center justify-center text-gray-500 hover:text-gray-700 text-sm transition-colors duration-200 disabled:opacity-50 mx-auto sm:mx-0"
                           >
                             <RotateCcw className="w-3 h-3 mr-1" />
                             Reset
@@ -269,7 +252,6 @@ const UserProfile = () => {
                     )}
                   </div>
 
-                  {/* Hidden file input */}
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -279,33 +261,31 @@ const UserProfile = () => {
                   />
                 </div>
 
-                {/* Image Selection Info */}
                 {isEditingImage && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p className="text-blue-700 text-sm text-center">
                       {selectedFile 
-                        ? `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`
+                        ? `Selected: ${selectedFile.name}`
                         : "Click on the profile picture or 'Select Image' to choose a new photo"
                       }
                     </p>
                   </div>
                 )}
 
-                {/* User Details */}
-                <div className="grid gap-4">
-                  <div className="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="space-y-4">
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <User className="w-5 h-5 text-blue-600 mr-3" />
                     <div>
                       <label className="text-blue-900 text-sm font-medium">Username</label>
-                      <p className="text-gray-800 text-base mt-1">@{user.username}</p>
+                      <p className="text-gray-800 mt-1">@{user.username}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <FileText className="w-5 h-5 text-blue-600 mr-3" />
                     <div>
                       <label className="text-blue-900 text-sm font-medium">Account Status</label>
-                      <p className="text-gray-800 text-base mt-1">Active</p>
+                      <p className="text-gray-800 mt-1">Active</p>
                     </div>
                   </div>
                 </div>
@@ -313,10 +293,8 @@ const UserProfile = () => {
             </div>
           </div>
 
-          {/* Quick Actions Sidebar */}
           <div className="space-y-6">
-            {/* Stats Card */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
               <h3 className="text-lg font-bold text-blue-900 mb-4">Quick Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -336,13 +314,12 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
               <h3 className="text-lg font-bold text-blue-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <Link 
                   to="/create-note" 
-                  className="flex items-center w-full text-white bg-gradient-to-r from-blue-600 to-[#DC143C] hover:from-blue-700 hover:to-[#DC143C]/90 px-4 py-3 rounded-xl transition-all duration-200 border border-transparent"
+                  className="flex items-center justify-center w-full text-white bg-gradient-to-r from-blue-600 to-[#DC143C] hover:from-blue-700 hover:to-[#DC143C]/90 px-4 py-3 rounded-lg transition-all duration-200 border border-transparent"
                 >
                   <FileText className="w-4 h-4 mr-3" />
                   Create New Note
@@ -350,7 +327,7 @@ const UserProfile = () => {
                 
                 <Link 
                   to="/my-notes" 
-                  className="flex items-center w-full text-blue-900 hover:text-[#DC143C] hover:bg-[#DC143C]/5 px-4 py-3 rounded-xl transition-all duration-200 border border-gray-300 hover:border-[#DC143C]/30"
+                  className="flex items-center justify-center w-full text-blue-900 hover:text-[#DC143C] hover:bg-[#DC143C]/5 px-4 py-3 rounded-lg transition-all duration-200 border border-gray-300 hover:border-[#DC143C]/30"
                 >
                   <FileText className="w-4 h-4 mr-3" />
                   View My Notes
@@ -359,14 +336,13 @@ const UserProfile = () => {
                 <button 
                   onClick={handleEditImage}
                   disabled={imageLoading || isEditingImage}
-                  className="flex items-center w-full text-[#DC143C] hover:text-[#DC143C]/80 hover:bg-[#DC143C]/5 px-4 py-3 rounded-xl transition-all duration-200 border border-[#DC143C]/30 disabled:opacity-50"
+                  className="flex items-center justify-center w-full text-[#DC143C] hover:text-[#DC143C]/80 hover:bg-[#DC143C]/5 px-4 py-3 rounded-lg transition-all duration-200 border border-[#DC143C]/30 disabled:opacity-50"
                 >
                   <Camera className="w-4 h-4 mr-3" />
                   Change Profile Picture
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       </div>

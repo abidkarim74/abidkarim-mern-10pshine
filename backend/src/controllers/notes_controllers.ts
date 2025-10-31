@@ -30,12 +30,32 @@ export const general_notes_list = async (req: AuthenticatedRequest, res: Respons
       res.status(401).json({ error: 'You are not authenticated!' });
       return;
     }
-    const notes = await Note.find({
+
+    const { search, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    
+    const filter: any = {
       creator: { $ne: req.user.id }
-    }).populate({
-      path: 'creator',
-      select: '-password'
-    });;
+    };
+
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      filter.$or = [
+        { title: { $regex: searchRegex } },
+        { content: { $regex: searchRegex } }
+      ];
+    }
+
+    const sort: any = {};
+    if (typeof sortBy === 'string') {
+      sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    }
+
+    const notes = await Note.find(filter)
+      .populate({
+        path: 'creator',
+        select: '-password'
+      })
+      .sort(sort);
 
     res.status(200).json(notes);
 

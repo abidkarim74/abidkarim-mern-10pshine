@@ -1,6 +1,7 @@
 export interface Note {
   content: string;
   createdAt: string;
+  title: string
   creator: {
     firstname: string;
     lastname: string;

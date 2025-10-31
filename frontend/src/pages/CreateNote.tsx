@@ -1,23 +1,46 @@
 import { useAuth } from "../context/authContext";
 import { postRequest } from "../api/requests";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Save, ArrowLeft, Sparkles, Type, Zap, Bold, Italic, List, Link, Smile } from "lucide-react";
+import { Save, ArrowLeft, Sparkles, Type, Zap } from "lucide-react";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+
 
 const CreateNote = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
   const [noteData, setNoteData] = useState({
     title: "",
     content: "",
-    contentHtml: "" // Add this to store HTML content
+    contentHtml: ""
   });
 
-  const editorRef = useRef<HTMLDivElement>(null);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link.configure({
+        openOnClick: false,
+      }),
+    ],
+    content: '',
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+
+      const text = editor.getText();
+      setNoteData(prev => ({
+        ...prev,
+        content: text,
+        contentHtml: html
+      }));
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,13 +58,13 @@ const CreateNote = () => {
     try {
       setLoading(true);
       setError(null);
+      
       setSuccess(null);
 
-      // Send both plain text and HTML content to the backend
       await postRequest("/notes/create-note", {
         title: noteData.title.trim(),
         content: noteData.content.trim(),
-        contentHtml: noteData.contentHtml // Send the formatted HTML
+        contentHtml: noteData.contentHtml
       });
 
       setSuccess("Your note has been created successfully!");
@@ -52,9 +75,8 @@ const CreateNote = () => {
         contentHtml: ""
       });
 
-      // Clear the editor
-      if (editorRef.current) {
-        editorRef.current.innerHTML = '';
+      if (editor) {
+        editor.commands.clearContent();
       }
 
       setTimeout(() => {
@@ -69,104 +91,26 @@ const CreateNote = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNoteData(prev => ({
       ...prev,
-      [name]: value
+      title: e.target.value
     }));
   };
 
-  const handleEditorChange = () => {
-    if (editorRef.current) {
-      setNoteData(prev => ({
-        ...prev,
-        content: editorRef.current?.innerText || "", // Plain text for character count
-        contentHtml: editorRef.current?.innerHTML || "" // HTML for formatting
-      }));
-    }
-  };
-
-  const handleTextFormat = (format: string) => {
-    if (!editorRef.current) return;
-
-    // Focus the editor first
-    editorRef.current.focus();
-    
-    // Use document.execCommand for rich text formatting
-    try {
-      switch (format) {
-        case 'bold':
-          document.execCommand('bold', false);
-          break;
-        case 'italic':
-          document.execCommand('italic', false);
-          break;
-        case 'insertUnorderedList':
-          document.execCommand('insertUnorderedList', false);
-          break;
-        case 'createLink':
-          const url = prompt('Enter URL:', 'https://');
-          if (url) {
-            document.execCommand('createLink', false, url);
-          }
-          break;
-        default:
-          break;
-      }
-    } catch (err) {
-      console.error('Formatting error:', err);
-    }
-
-    // Update the content state
-    handleEditorChange();
-  };
-
-  const insertEmoji = (emoji: string) => {
-    if (!editorRef.current) return;
-
-    editorRef.current.focus();
-    
-    try {
-      document.execCommand('insertText', false, emoji);
-    } catch (err) {
-      // Fallback for browsers that don't support insertText
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(emoji));
-        range.collapse(false);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-    }
-
-    handleEditorChange();
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    
-    // Get plain text from clipboard
-    const text = e.clipboardData.getData('text/plain');
-    
-    // Insert text at cursor position
-    if (editorRef.current) {
-      document.execCommand('insertText', false, text);
-      handleEditorChange();
-    }
-  };
-
-  // Function to ensure the editor has proper styling when empty
-  const ensureEditorStyle = () => {
-    if (editorRef.current && !editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = '<div><br></div>';
+  const addLink = () => {
+    const url = window.prompt('URL');
+    if (url) {
+      editor?.chain().focus().setLink({ href: url }).run();
     }
   };
 
   const characterCount = noteData.content.length;
   const maxCharacters = 2000;
+
+  if (!editor) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-8">
@@ -222,7 +166,7 @@ const CreateNote = () => {
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-                <p className="text-red-700 text-center text-lg">🚨 {error}</p>
+                <p className="text-red-700 text-center text-lg">{error}</p>
               </div>
             )}
 
@@ -236,7 +180,7 @@ const CreateNote = () => {
                 type="text"
                 name="title"
                 value={noteData.title}
-                onChange={handleChange}
+                onChange={handleTitleChange}
                 placeholder="Give your note an amazing title... "
                 className="w-full bg-white border-2 border-gray-300 rounded-xl px-6 py-4 text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 text-lg"
                 disabled={loading || !!success}
@@ -257,109 +201,90 @@ const CreateNote = () => {
                   Your EPIC Note
                 </label>
                 
-                {/* Text Editor Toolbar */}
-                <div className="flex items-center space-x-1 bg-gray-50 rounded-lg p-2 border border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => handleTextFormat('bold')}
-                    className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Bold"
-                  >
-                    <Bold className="w-4 h-4" />
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => handleTextFormat('italic')}
-                    className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Italic"
-                  >
-                    <Italic className="w-4 h-4" />
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => handleTextFormat('insertUnorderedList')}
-                    className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Bullet List"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => handleTextFormat('createLink')}
-                    className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Add Link"
-                  >
-                    <Link className="w-4 h-4" />
-                  </button>
-                  
-                  <div className="relative group">
-                    <button
-                      type="button"
-                      className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                      title="Add Emoji"
-                    >
-                      <Smile className="w-4 h-4" />
-                    </button>
-                    <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 grid grid-cols-4 gap-1">
-                      {['😊', '😂', '❤️', '🔥', '⭐', '🎉', '💡', '🚀'].map(emoji => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => insertEmoji(emoji)}
-                          className="p-1 hover:bg-gray-100 rounded transition-colors text-lg"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="text-sm text-gray-500">
+                  {characterCount}/{maxCharacters} characters
                 </div>
               </div>
               
               <div className="relative">
-                {/* Rich Text Editor */}
-                <div
-                  ref={editorRef}
-                  contentEditable={!loading && !success}
-                  onInput={handleEditorChange}
-                  onPaste={handlePaste}
-                  onFocus={ensureEditorStyle}
-                  className="w-full h-64 bg-white border-2 border-gray-300 rounded-xl px-6 py-5 text-gray-800 transition-all duration-300 resize-none text-lg font-normal leading-relaxed overflow-y-auto prose prose-lg max-w-none"
-                  style={{ 
-                    minHeight: '256px',
-                    outline: 'none'
-                  }}
-                  data-placeholder="What's on your mind? Share something amazing..."
-                />
-                
-                {/* Placeholder text */}
-                {!noteData.content && (
-                  <div className="absolute top-5 left-6 text-gray-400 pointer-events-none">
-                    What's on your mind? Share something amazing...
-                    <div className="text-sm mt-2 text-gray-500">
-                      Use the toolbar above to format your text with <strong>bold</strong>, <em>italic</em>, lists, and links!
-                    </div>
-                  </div>
-                )}
-                
-                {/* Character Counter */}
-                <div className="absolute bottom-4 right-4">
-                  <span className={`text-sm ${
-                    characterCount > maxCharacters * 0.9 
-                      ? 'text-[#DC143C]' 
-                      : characterCount > maxCharacters * 0.8
-                      ? 'text-orange-500'
-                      : 'text-gray-500'
-                  }`}>
-                    {characterCount}/{maxCharacters}
-                  </span>
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center space-x-1 bg-gray-50 rounded-t-lg p-3 border-2 border-gray-300 border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleBold().run()}
+                    className={`p-2 rounded-lg transition-colors ${
+                      editor.isActive('bold') 
+                        ? 'text-white bg-blue-600' 
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                    title="Bold"
+                  >
+                    <strong>B</strong>
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                    className={`p-2 rounded-lg transition-colors ${
+                      editor.isActive('italic') 
+                        ? 'text-white bg-blue-600' 
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                    title="Italic"
+                  >
+                    <em>I</em>
+                  </button>
+                  
+                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    className={`p-2 rounded-lg transition-colors ${
+                      editor.isActive('heading', { level: 2 }) 
+                        ? 'text-white bg-blue-600' 
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                    title="Heading"
+                  >
+                    H2
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleBulletList().run()}
+                    className={`p-2 rounded-lg transition-colors ${
+                      editor.isActive('bulletList') 
+                        ? 'text-white bg-blue-600' 
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                    title="Bullet List"
+                  >
+                    • List
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={addLink}
+                    className={`p-2 rounded-lg transition-colors ${
+                      editor.isActive('link') 
+                        ? 'text-white bg-blue-600' 
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                    title="Add Link"
+                  >
+                    Link
+                  </button>
                 </div>
 
+                {/* Editor */}
+                <EditorContent 
+                  editor={editor} 
+                  className="min-h-64 bg-white border-2 border-gray-300 rounded-b-lg px-6 py-4 text-gray-800 transition-all duration-300 resize-none text-lg font-normal leading-relaxed overflow-y-auto prose prose-lg max-w-none focus-within:border-[#DC143C]"
+                />
+                
                 {characterCount > 0 && characterCount < 100 && (
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute -top-2 right-4">
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1">
                       <p className="text-yellow-700 text-xs">Add more details!</p>
                     </div>
@@ -367,17 +292,16 @@ const CreateNote = () => {
                 )}
               </div>
 
-              {/* Formatting Help */}
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="text-blue-800 text-sm font-medium mb-2">How to use the text editor:</p>
+                <p className="text-blue-800 text-sm font-medium mb-2">Rich Text Editor Features:</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-700">
-                  <div>1. <strong>Select text</strong> → Click <strong>Bold/Italic</strong> to see actual formatting</div>
-                  <div>2. Click <strong>List</strong> to create bullet points</div>
-                  <div>3. Click <strong>Link</strong> to add clickable links</div>
-                  <div>4. Use the <strong>smiley</strong> to add emojis</div>
+                  <div>• <strong>Bold, Italic</strong> - Text formatting</div>
+                  <div>• <strong>Headings</strong> - Section headers</div>
+                  <div>• <strong>Lists</strong> - Bullet points</div>
+                  <div>• <strong>Links</strong> - Add clickable URLs</div>
                 </div>
                 <p className="text-blue-600 text-xs mt-2 font-medium">
-                  ✅ Your formatting (bold, italic, lists, links) will be saved and displayed!
+                  All formatting will be saved and displayed beautifully!
                 </p>
               </div>
             </div>
@@ -420,15 +344,15 @@ const CreateNote = () => {
               <Sparkles className="w-6 h-6 text-blue-600" />
             </div>
             <h4 className="text-blue-900 font-semibold mb-2">Rich Formatting</h4>
-            <p className="text-gray-600 text-sm">Bold, italic, lists and links are preserved</p>
+            <p className="text-gray-600 text-sm">Headers, bold, italic, lists and links</p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 text-center">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Zap className="w-6 h-6 text-[#DC143C]" />
             </div>
-            <h4 className="text-blue-900 font-semibold mb-2">Real-time Preview</h4>
-            <p className="text-gray-600 text-sm">See formatting as you type</p>
+            <h4 className="text-blue-900 font-semibold mb-2">Modern Editor</h4>
+            <p className="text-gray-600 text-sm">Clean interface with essential tools</p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 text-center">
