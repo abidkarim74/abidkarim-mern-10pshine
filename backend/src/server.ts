@@ -8,9 +8,9 @@ import cookieParser from "cookie-parser";
 import cors from 'cors';
 import notes_router from './routes/notes_routes.js';
 import path from 'path';
+import { app, mainServer } from './socket/socketio.js';
+import notification_router from './routes/notifications_routes.js';
 
-
-const app: Application = express()
 
 dotenv.config()
 const PORT = process.env.PORT || 8080;
@@ -33,9 +33,10 @@ app.use(morgan('dev'));
 
 app.use('/api/auth', auth_router);
 app.use('/api/notes', notes_router);
+app.use('/api/notifications', notification_router);
 
 
-app.listen(PORT, () => {
+mainServer.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`)
 })
 
