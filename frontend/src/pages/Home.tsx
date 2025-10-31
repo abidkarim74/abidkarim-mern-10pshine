@@ -1,14 +1,17 @@
-import { getRequest } from "../api/requests";
+import { getRequest, postRequest } from "../api/requests";
 import { useEffect, useState } from "react";
 import type { Note } from "../interfaces/NotesInterface";
 import { Calendar, MessageCircle, Heart, Clock, Eye } from "lucide-react";
 import { useSearch } from "../context/searchContext";
+import { useAuth } from "../context/authContext";
 
 
 const Home = () => {
   const { search_param } = useSearch();
+  const { user } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [liking, setLiking] = useState<string | null>(null);
 
   const [notes, setNotes] = useState<Note[] | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -29,7 +32,6 @@ const Home = () => {
 
       if (response && response.length > 0) {
         setSelectedNote(response[0]);
-
       } else {
         setSelectedNote(null);
       }
@@ -39,7 +41,6 @@ const Home = () => {
         err.message ||
         "Failed to fetch notes. Please try again.";
       setError(errorMessage);
-
     } finally {
       setLoading(false);
     }
@@ -48,6 +49,57 @@ const Home = () => {
   useEffect(() => {
     fetchNotes();
   }, []);
+
+  const toggle_like = async (note_id: string) => {
+    if (!user) {
+      setError("Please login to like notes");
+      return;
+    }
+
+    try {
+      setLiking(note_id);
+      
+      const response = await postRequest("/notes/toogle-like", { note_id });
+      
+      setNotes(prevNotes => 
+        prevNotes?.map(note => {
+          if (note._id === note_id) {
+            return {
+              ...note,
+              likers: response.liked 
+                ? [...note.likers, user._id] 
+                : note.likers.filter(id => id !== user._id), 
+            };
+          }
+          return note;
+        }) || null
+      );
+
+      if (selectedNote && selectedNote._id === note_id) {
+        setSelectedNote(prev => prev ? {
+          ...prev,
+          likers: response.liked 
+            ? [...prev.likers, user._id]
+            : prev.likers.filter(id => id !== user._id),
+        } : null);
+      }
+
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || "Failed to like note";
+      setError(errorMessage);
+    } finally {
+      setLiking(null);
+    }
+  };
+
+  const isNoteLiked = (note: Note) => {
+    if (!user) return false;
+    return note.likers.includes(user._id);
+  };
+
+  const getLikesCount = (note: Note) => {
+    return note.likers.length;
+  };
 
   useEffect(() => {
     if (search_param !== undefined) {
@@ -71,9 +123,7 @@ const Home = () => {
     try {
       const datePart = dateString.substring(0, 10);
       const timePart = dateString.substring(10);
-
       const fixedTimePart = timePart.substring(1);
-
       const properDateString = `${datePart}T${fixedTimePart}`;
       const date = new Date(properDateString);
 
@@ -98,13 +148,11 @@ const Home = () => {
       const datePart = dateString.substring(0, 10);
       const timePart = dateString.substring(10);
       const fixedTimePart = timePart.substring(1);
-
       const properDateString = `${datePart}T${fixedTimePart}`;
       const date = new Date(properDateString);
 
       if (isNaN(date.getTime())) {
         throw new Error("Invalid date");
-      
       }
       return date.toLocaleTimeString("en-US", {
         hour: "2-digit",
@@ -171,81 +219,99 @@ const Home = () => {
                 </h2>
 
                 <div className="space-y-4">
-                  {filteredNotes.map((note, index) => (
-                    <div
-                      key={note._id}
-                      onClick={() => setSelectedNote(note)}
-                      className={`p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
-                        selectedNote?._id === note._id
-                          ? "border-[#DC143C] bg-gradient-to-r from-blue-50 to-red-50 shadow-md"
-                          : "border-gray-200 bg-white hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex items-center justify-center bg-gradient-to-r from-blue-600 to-[#DC143C]">
-                            {note.creator.profile_pic ? (
-                              <img
-                                src={`http://localhost:8080` + note.creator.profile_pic}
-                                alt={`${note.creator.firstname} ${note.creator.lastname}`}
-                                className="w-full h-full object-cover"
+                  {filteredNotes.map((note, index) => {
+                    const isLiked = isNoteLiked(note);
+                    const likesCount = getLikesCount(note);
+                    
+                    return (
+                      <div
+                        key={note._id}
+                        onClick={() => setSelectedNote(note)}
+                        className={`p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
+                          selectedNote?._id === note._id
+                            ? "border-[#DC143C] bg-gradient-to-r from-blue-50 to-red-50 shadow-md"
+                            : "border-gray-200 bg-white hover:border-blue-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex items-center justify-center bg-gradient-to-r from-blue-600 to-[#DC143C]">
+                              {note.creator.profile_pic ? (
+                                <img
+                                  src={`http://localhost:8080${note.creator.profile_pic}`}
+                                  alt={`${note.creator.firstname} ${note.creator.lastname}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-white font-bold text-sm">
+                                  {note.creator.firstname[0]}
+                                  {note.creator.lastname[0]}
+                                </span>
+                              )}
+                            </div>
+
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                {note.creator.firstname} {note.creator.lastname}
+                              </h3>
+                              <p className="text-gray-500 text-sm">
+                                @{note.creator.username}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center text-gray-500 text-sm mb-1">
+                              <Calendar className="w-4 h-4 mr-1" />
+                              {formatDate(note.createdAt)}
+                            </div>
+                            <div className="flex items-center text-gray-500 text-sm">
+                              <Clock className="w-4 h-4 mr-1" />
+                              {formatTime(note.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-gray-800 text-lg leading-relaxed mb-4 line-clamp-3">
+                          {note.title}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                          <div className="flex items-center space-x-4 text-gray-500">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggle_like(note._id);
+                              }}
+                              disabled={liking === note._id || !user}
+                              className={`flex items-center space-x-1 transition-colors ${
+                                isLiked 
+                                  ? "text-[#DC143C]" 
+                                  : "hover:text-[#DC143C]"
+                              } ${liking === note._id ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
+                              <Heart 
+                                className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} 
                               />
-                            ) : (
-                              <span className="text-white font-bold text-sm">
-                                {note.creator.firstname[0]}
-                                {note.creator.lastname[0]}
-                              </span>
-                            )}
+                              <span className="text-sm">{likesCount}</span>
+                            </button>
+                            <button 
+                              className="lg:hidden flex items-center space-x-1 hover:text-blue-600 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleNoteClick(note);
+                              }}
+                            >
+                              <Eye className="w-4 h-4" />
+                              <span className="text-sm">View</span>
+                            </button>
                           </div>
-
-                          <div>
-                            <h3 className="font-semibold text-gray-900">
-                              {note.creator.firstname} {note.creator.lastname}
-                            </h3>
-                            <p className="text-gray-500 text-sm">
-                              @{note.creator.username}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center text-gray-500 text-sm mb-1">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            {formatDate(note.createdAt)}
-                          </div>
-                          <div className="flex items-center text-gray-500 text-sm">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {formatTime(note.createdAt)}
+                          <div className="text-xs text-gray-400">
+                            #{index + 1} in {search_param ? "results" : "feed"}
                           </div>
                         </div>
                       </div>
-
-                      <p className="text-gray-800 text-lg leading-relaxed mb-4 line-clamp-3">
-                        {note.title}
-                      </p>
-
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                        <div className="flex items-center space-x-4 text-gray-500">
-                          <button className="flex items-center space-x-1 hover:text-[#DC143C] transition-colors">
-                            <Heart className="w-4 h-4" />
-                            <span className="text-sm">24</span>
-                          </button>
-                          <button 
-                            className="lg:hidden flex items-center space-x-1 hover:text-blue-600 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNoteClick(note);
-                            }}
-                          >
-                            <Eye className="w-4 h-4" />
-                            <span className="text-sm">View</span>
-                          </button>
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          #{index + 1} in {search_param ? "results" : "feed"}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -264,7 +330,7 @@ const Home = () => {
                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-white/30">
                       {selectedNote.creator.profile_pic ? (
                         <img
-                          src={`http://localhost:8080` + selectedNote.creator.profile_pic}
+                          src={`http://localhost:8080${selectedNote.creator.profile_pic}`}
                           alt={`${selectedNote.creator.firstname} ${selectedNote.creator.lastname}`}
                           className="w-6 h-6 rounded-full object-cover"
                         />
@@ -304,17 +370,36 @@ const Home = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div className="bg-blue-50 rounded p-2 text-center">
-                        <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
-                        <div className="text-blue-900 font-medium">
-                          {formatDate(selectedNote.createdAt)}
+                    <div className="flex items-center justify-between">
+                      <button 
+                        onClick={() => toggle_like(selectedNote._id)}
+                        disabled={liking === selectedNote._id || !user}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                          isNoteLiked(selectedNote)
+                            ? "bg-[#DC143C] text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        } ${liking === selectedNote._id ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <Heart 
+                          className={`w-4 h-4 ${isNoteLiked(selectedNote) ? "fill-current" : ""}`} 
+                        />
+                        <span>
+                          {isNoteLiked(selectedNote) ? "Liked" : "Like"} • {getLikesCount(selectedNote)}
+                        </span>
+                      </button>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="bg-blue-50 rounded p-2 text-center">
+                          <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
+                          <div className="text-blue-900 font-medium">
+                            {formatDate(selectedNote.createdAt)}
+                          </div>
                         </div>
-                      </div>
-                      <div className="bg-red-50 rounded p-2 text-center">
-                        <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
-                        <div className="text-[#DC143C] font-medium">
-                          {formatTime(selectedNote.createdAt)}
+                        <div className="bg-red-50 rounded p-2 text-center">
+                          <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
+                          <div className="text-[#DC143C] font-medium">
+                            {formatTime(selectedNote.createdAt)}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -367,7 +452,7 @@ const Home = () => {
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 border-2 border-white/30">
                   {selectedNote.creator.profile_pic ? (
                     <img
-                      src={`http://localhost:8080` + selectedNote.creator.profile_pic}
+                      src={`http://localhost:8080${selectedNote.creator.profile_pic}`}
                       alt={`${selectedNote.creator.firstname} ${selectedNote.creator.lastname}`}
                       className="w-6 h-6 rounded-full object-cover"
                     />
@@ -407,17 +492,36 @@ const Home = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-blue-50 rounded p-2 text-center">
-                    <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
-                    <div className="text-blue-900 font-medium">
-                      {formatDate(selectedNote.createdAt)}
+                <div className="flex items-center justify-between">
+                  <button 
+                    onClick={() => toggle_like(selectedNote._id)}
+                    disabled={liking === selectedNote._id || !user}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                      isNoteLiked(selectedNote)
+                        ? "bg-[#DC143C] text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    } ${liking === selectedNote._id ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <Heart 
+                      className={`w-4 h-4 ${isNoteLiked(selectedNote) ? "fill-current" : ""}`} 
+                    />
+                    <span>
+                      {isNoteLiked(selectedNote) ? "Liked" : "Like"} • {getLikesCount(selectedNote)}
+                    </span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="bg-blue-50 rounded p-2 text-center">
+                      <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
+                      <div className="text-blue-900 font-medium">
+                        {formatDate(selectedNote.createdAt)}
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-red-50 rounded p-2 text-center">
-                    <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
-                    <div className="text-[#DC143C] font-medium">
-                      {formatTime(selectedNote.createdAt)}
+                    <div className="bg-red-50 rounded p-2 text-center">
+                      <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
+                      <div className="text-[#DC143C] font-medium">
+                        {formatTime(selectedNote.createdAt)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -429,5 +533,6 @@ const Home = () => {
     </div>
   );
 };
+
 
 export default Home;
