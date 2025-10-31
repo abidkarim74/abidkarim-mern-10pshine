@@ -193,10 +193,9 @@ const MyNotes = () => {
           </h1>
 
           <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto">
-            Your personal collection of amazing thoughts and ideas! ✨
+            Your personal collection of amazing thoughts and ideas! 
           </p>
 
-          {/* User Profile Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 max-w-md mx-auto mb-8">
             <div className="flex items-center justify-center space-x-4">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-[#DC143C] rounded-full flex items-center justify-center shadow-lg">

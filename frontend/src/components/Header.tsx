@@ -1,11 +1,17 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/authContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Menu, X, LogOut, Home, FileText, Plus, User, Search } from "lucide-react";
 import MainLoading from "./MainLoading";
+import { useSearch } from "../context/searchContext";
+
 
 const Header = () => {
   const { logout, accessToken, user } = useAuth();
+  const { setSearchParam } = useSearch();
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   if (!accessToken) {
     return <MainLoading />;
@@ -19,8 +25,10 @@ const Header = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   const handleLogout = async () => {
@@ -28,9 +36,11 @@ const Header = () => {
       setLoading(true);
       setError(null);
       await logout();
+
     } catch (err) {
       setError("Failed to log out. Please try again.");
       console.error("Logout error:", err);
+
     } finally {
       setLoading(false);
     }
@@ -50,10 +60,11 @@ const Header = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (searchQuery.trim()) {
-      // Handle search functionality here
-      console.log("Searching for:", searchQuery);
-      // You can navigate to search results page or perform search
+      if (location.pathname !== "/") {
+        navigate("/");
+      }
     }
     if (window.innerWidth < 768) {
       setIsSearchOpen(false);
@@ -65,12 +76,15 @@ const Header = () => {
     setSearchQuery("");
   };
 
+  useEffect(() => {
+    setSearchParam(searchQuery);
+  }, [searchQuery]);
+
   return (
     <>
       <header className="bg-white backdrop-blur-lg border-b border-gray-200 shadow-sm relative z-40 sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
             <div className="flex items-center">
               <Link 
                 to="/" 
@@ -81,7 +95,6 @@ const Header = () => {
               </Link>
             </div>
 
-            {/* Desktop Search Bar */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
               <form onSubmit={handleSearch} className="relative w-full">
                 <div className="relative">
@@ -106,7 +119,6 @@ const Header = () => {
               </form>
             </div>
 
-            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-4">
               <Link 
                 to="/" 
@@ -125,7 +137,6 @@ const Header = () => {
               </Link>
             </nav>
 
-            {/* Desktop User Menu */}
             <div className="hidden md:flex items-center space-x-3">
               <div className="relative">
                 <button className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg hover:scale-110 border border-transparent hover:border-[#DC143C]/20">
@@ -158,7 +169,6 @@ const Header = () => {
                 </div>
               </Link>
 
-              {/* Logout Button */}
               <button 
                 onClick={handleLogout}
                 disabled={loading}
@@ -178,9 +188,7 @@ const Header = () => {
               </button>
             </div>
 
-            {/* Mobile Icons */}
             <div className="flex md:hidden items-center space-x-2">
-              {/* Mobile Notification Button */}
               <div className="relative">
                 <button className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20">
                   <Bell className="w-5 h-5" />
@@ -192,7 +200,6 @@ const Header = () => {
                 </button>
               </div>
 
-              {/* Mobile Search Button */}
               <button 
                 onClick={toggleSearch}
                 className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20"
@@ -201,7 +208,6 @@ const Header = () => {
                 <Search className="w-5 h-5" />
               </button>
 
-              {/* Mobile menu button */}
               <button 
                 onClick={toggleMobileMenu}
                 className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20"
@@ -252,12 +258,10 @@ const Header = () => {
               </form>
             </div>
             
-            {/* Recent Searches or Search Results can go here */}
             <div className="p-4">
               <p className="text-sm text-gray-500 text-center">
                 Type to search your notes...
               </p>
-              {/* You can add recent searches or instant results here */}
             </div>
           </div>
         )}
@@ -266,14 +270,12 @@ const Header = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 animate-in slide-in-from-top-5 duration-300">
             <div className="px-4 sm:px-6 lg:px-8 py-4">
-              {/* Error Message */}
               {error && (
                 <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
               
-              {/* User Info */}
               <div className="flex items-center mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                 {user?.profile_pic ? (
                   <img 
@@ -292,7 +294,6 @@ const Header = () => {
                 </div>
               </div>
 
-              {/* Mobile Navigation Links */}
               <div className="space-y-2">
                 <Link 
                   to="/" 
@@ -321,7 +322,6 @@ const Header = () => {
                   Create Note
                 </Link>
 
-                {/* Mobile Search in Menu */}
                 <button 
                   onClick={() => {
                     closeMobileMenu();
@@ -335,7 +335,6 @@ const Header = () => {
                   </div>
                 </button>
 
-                {/* Mobile Logout */}
                 <button 
                   onClick={handleLogout}
                   disabled={loading}
@@ -355,7 +354,6 @@ const Header = () => {
         )}
       </header>
 
-      {/* Global Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-2xl flex items-center space-x-4">
