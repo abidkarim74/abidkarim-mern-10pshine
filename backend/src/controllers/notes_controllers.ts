@@ -1,6 +1,9 @@
 import { Note } from "../models/notes_models.js";
 import { AuthenticatedRequest } from "../interfaces/auth_interface.js";
 import { Response } from "express";
+import { getReceivedSocketId, io } from "../socket/socketio.js";
+import Notification from "../models/notification_models.js";
+import { User } from "../models/auth_models.js";
 
 
 export const auth_notes_list = async (req: AuthenticatedRequest, res: Response) => {
@@ -156,8 +159,6 @@ export const delete_note = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 
-
-
 export const toogle_like_note = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -174,7 +175,14 @@ export const toogle_like_note = async (req: AuthenticatedRequest, res: Response)
 
     const userId = req.user.id;
 
-    const noteExists = await Note.findById(note_id);
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({ error: "Could not find user!" });
+      return;
+    }
+
+    const noteExists = await Note.findById(note_id).populate('creator', 'username firstname lastname _id');
 
     if (!noteExists) {
       res.status(404).json({ error: 'Note not found!' });
@@ -199,6 +207,35 @@ export const toogle_like_note = async (req: AuthenticatedRequest, res: Response)
         { $addToSet: { likers: userId } },
         { new: true }
       );
+
+      if (noteExists.creator._id.toString() !== userId) {
+        const notification = new Notification({
+          recipient: noteExists.creator._id,
+          sender: req.user.id,
+          note: noteExists._id,
+          message: `${user.firstname} ${user.lastname} liked your note: "${noteExists.title}"`
+        });
+        
+        await notification.save();
+
+        const receiverSocketId = getReceivedSocketId(noteExists.creator._id.toString());
+        
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit('new_like_notification', {
+            notificationId: notification._id,
+            message: notification.message,
+            noteId: noteExists._id,
+            noteTitle: noteExists.title,
+            sender: {
+              id: req.user.id,
+              firstname: user.firstname,
+              lastname: user.lastname,
+              username: user.username
+            },
+            timestamp: notification.createdAt
+          });
+        }
+      }
     }
 
     res.status(200).json({ 
