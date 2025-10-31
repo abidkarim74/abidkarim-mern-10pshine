@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import cookieParser from "cookie-parser";
 import cors from 'cors';
 import notes_router from './routes/notes_routes.js';
+import path from 'path';
 
 
 const app: Application = express()
@@ -23,6 +24,8 @@ app.use(cors({
   origin: allowedOrigins[0],
   credentials: true
 }));
+app.use("/uploads", express.static(path.resolve("uploads")));
+
 app.use(express.json());
 app.use(cookieParser(process.env.SIGNING_SECRET || "my-secret"));
 app.use(morgan('dev'));

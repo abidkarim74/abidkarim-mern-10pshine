@@ -19,7 +19,12 @@ const notes_schema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    likers: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: 'User'
+    }
   },
+ 
   { timestamps: true } 
 );
 
