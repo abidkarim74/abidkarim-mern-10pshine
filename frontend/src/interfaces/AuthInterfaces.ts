@@ -14,7 +14,6 @@ export interface SignupFormData {
   username: string;
   password: string;
   confirmPassword: string;
-  agreeToTerms: boolean;
 }
 
 export interface SignupErrors {
@@ -23,6 +22,4 @@ export interface SignupErrors {
   username?: string;
   password?: string;
   confirmPassword?: string;
-  agreeToTerms?: string;
-  general?: string;
 }

@@ -19,6 +19,16 @@ export const putRequest = async (endpoint: string, updated_data: any) => {
 }
 
 
+export const uploadFileRequest = async (endpoint: string, formData: FormData) => {
+  const res = await api.put(endpoint, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
+};
+
+
 export const deleteRequest = async (endpoint: string) => {
   const res = await api.delete(endpoint)
   return res.data;

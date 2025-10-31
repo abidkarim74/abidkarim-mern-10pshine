@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshInProgress = useRef(false); 
   const initialized = useRef(false); 
 
+  console.log("User: ", user);
+
   const refreshAccessToken = async (): Promise<string | null> => {
     if (refreshInProgress.current) {
       return null;

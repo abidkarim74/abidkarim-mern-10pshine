@@ -191,3 +191,41 @@ export const logout_user = async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ error: "Internal server error while logging out" });
   }
 }
+
+
+export const update_profile_image = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "You are not authorized to perform this task!" });
+      return;
+    }
+
+    let updatedData: any = {};
+
+    if (req.file) {
+      updatedData.profile_pic = `/uploads/profile-pictures/${req.file.filename}`;
+    } else {
+      
+      res.status(400).json({ error: "No file uploaded!" });
+      return;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: updatedData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      console.log("hh")
+      res.status(400).json({ error: "Could not update user!" });
+      return;
+    }
+
+    res.status(200).json(updatedUser);
+
+  } catch (err: any) {
+    console.error(err.message);
+    res.status(500).json({ error: "Internal server error while updating profile!" });
+  }
+};

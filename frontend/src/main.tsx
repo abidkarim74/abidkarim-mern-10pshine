@@ -15,3 +15,4 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 )
+//`http://localhost:8080` + note.creator.profile_pic

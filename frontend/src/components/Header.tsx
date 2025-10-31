@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/authContext";
 import { useState } from "react";
-import { Bell, Menu, X, LogOut, Home, FileText, Plus } from "lucide-react";
+import { Bell, Menu, X, LogOut, Home, FileText, Plus, User, Search } from "lucide-react";
 import MainLoading from "./MainLoading";
-
 
 const Header = () => {
   const { logout, accessToken, user } = useAuth();
@@ -21,6 +20,8 @@ const Header = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const handleLogout = async () => {
     try {
@@ -43,77 +44,129 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   };
 
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Handle search functionality here
+      console.log("Searching for:", searchQuery);
+      // You can navigate to search results page or perform search
+    }
+    if (window.innerWidth < 768) {
+      setIsSearchOpen(false);
+    }
+  };
+
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+  };
+
   return (
     <>
-      <header className="bg-gradient-to-r from-gray-900/95 via-blue-900/95 to-purple-900/95 backdrop-blur-lg border-b border-cyan-500/30 shadow-2xl relative z-40">
+      <header className="bg-white backdrop-blur-lg border-b border-gray-200 shadow-sm relative z-40 sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
+            {/* Logo */}
             <div className="flex items-center">
               <Link 
                 to="/" 
-                className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent animate-pulse"
+                className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-[#DC143C] bg-clip-text text-transparent hover:scale-105 transition-transform duration-300"
                 onClick={closeMobileMenu}
               >
                 EPIC Notes
               </Link>
             </div>
 
-            <nav className="hidden md:flex items-center space-x-6">
+            {/* Desktop Search Bar */}
+            <div className="hidden md:flex flex-1 max-w-md mx-8">
+              <form onSubmit={handleSearch} className="relative w-full">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search notes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 outline-none text-sm"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#DC143C] transition-colors duration-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-4">
               <Link 
                 to="/" 
-                className="text-cyan-200 hover:text-cyan-400 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-cyan-500/10 hover:scale-105 border border-transparent hover:border-cyan-500/30"
+                className="text-blue-900 hover:text-[#DC143C] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-[#DC143C]/5 hover:scale-105 border border-transparent hover:border-[#DC143C]/20 flex items-center"
               >
                 <Home className="w-4 h-4 inline mr-2" />
                 Home
               </Link>
-              <Link 
-                to="/my-notes" 
-                className="text-cyan-200 hover:text-cyan-400 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-cyan-500/10 hover:scale-105 border border-transparent hover:border-cyan-500/30"
-              >
-                <FileText className="w-4 h-4 inline mr-2" />
-                My Notes
-              </Link>
+            
               <Link 
                 to="/create-note" 
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-cyan-500/25 flex items-center border border-cyan-400/50"
+                className="bg-gradient-to-r from-blue-600 to-[#DC143C] text-white hover:from-blue-700 hover:to-[#DC143C]/90 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg shadow-blue-500/25 flex items-center border border-transparent"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Note
               </Link>
             </nav>
 
-            <div className="hidden md:flex items-center space-x-4">
+            {/* Desktop User Menu */}
+            <div className="hidden md:flex items-center space-x-3">
               <div className="relative">
-                <button className="p-2.5 text-cyan-200 hover:text-cyan-400 transition-all duration-300 hover:bg-cyan-500/10 rounded-lg hover:scale-110 border border-transparent hover:border-cyan-500/30">
+                <button className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg hover:scale-110 border border-transparent hover:border-[#DC143C]/20">
                   <Bell className="w-5 h-5" />
                   {userData.notifications > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse border border-cyan-200">
+                    <span className="absolute -top-1 -right-1 bg-[#DC143C] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse border border-white">
                       {userData.notifications}
                     </span>
                   )}
                 </button>
               </div>
 
-              <div className="flex items-center space-x-3 bg-cyan-500/10 rounded-lg px-3 py-2 border border-cyan-500/30">
-                <img 
-                  src={userData.avatar} 
-                  alt={userData.name}
-                  className="w-8 h-8 rounded-full object-cover border-2 border-cyan-400/50"
-                />
+              <Link 
+                to={`/${user?.username}`} 
+                className="flex items-center space-x-3 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 hover:bg-[#DC143C]/5 hover:border-[#DC143C]/30 transition-all duration-300"
+              >
+                {user?.profile_pic ? (
+                  <img 
+                    src={`http://localhost:8080${user.profile_pic}`} 
+                    alt={user?.firstname}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-[#DC143C]/30"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-[#DC143C] flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                )}
                 <div className="text-right">
-                  <p className="text-sm font-medium text-cyan-200">{userData.name}</p>
+                  <p className="text-sm font-medium text-blue-900">{userData.name}</p>
                 </div>
-              </div>
+              </Link>
 
               {/* Logout Button */}
               <button 
                 onClick={handleLogout}
                 disabled={loading}
-                className="flex items-center justify-center text-cyan-200 hover:text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 border border-cyan-500/30 hover:border-red-400/50 hover:bg-red-500/10 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed min-w-20"
+                className="flex items-center justify-center text-blue-900 hover:text-white hover:bg-[#DC143C] px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-[#DC143C] hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed min-w-20"
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Logging out...
                   </>
                 ) : (
@@ -125,39 +178,117 @@ const Header = () => {
               </button>
             </div>
 
-            {/* Mobile menu button */}
-            <button 
-              onClick={toggleMobileMenu}
-              className="md:hidden p-2.5 text-cyan-200 hover:text-cyan-400 transition-all duration-300 hover:bg-cyan-500/10 rounded-lg border border-transparent hover:border-cyan-500/30"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
+            {/* Mobile Icons */}
+            <div className="flex md:hidden items-center space-x-2">
+              {/* Mobile Notification Button */}
+              <div className="relative">
+                <button className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20">
+                  <Bell className="w-5 h-5" />
+                  {userData.notifications > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-[#DC143C] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse border border-white">
+                      {userData.notifications}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Mobile Search Button */}
+              <button 
+                onClick={toggleSearch}
+                className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20"
+                aria-label="Search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+
+              {/* Mobile menu button */}
+              <button 
+                onClick={toggleMobileMenu}
+                className="p-2.5 text-blue-900 hover:text-[#DC143C] transition-all duration-300 hover:bg-[#DC143C]/5 rounded-lg border border-transparent hover:border-[#DC143C]/20"
+                aria-label="Toggle menu"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
+        {/* Mobile Search Overlay */}
+        {isSearchOpen && (
+          <div className="md:hidden absolute top-0 left-0 right-0 bottom-0 bg-white/95 backdrop-blur-md z-50 animate-in slide-in-from-top-5 duration-300">
+            <div className="flex items-center h-16 px-4 border-b border-gray-200">
+              <form onSubmit={handleSearch} className="flex-1 relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search notes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
+                    className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-lg bg-white focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 outline-none text-base"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#DC143C] transition-colors duration-200"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={closeSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-900 hover:text-[#DC143C] transition-colors duration-200 font-medium text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+            
+            {/* Recent Searches or Search Results can go here */}
+            <div className="p-4">
+              <p className="text-sm text-gray-500 text-center">
+                Type to search your notes...
+              </p>
+              {/* You can add recent searches or instant results here */}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 bg-gradient-to-b from-gray-900/95 to-blue-900/95 backdrop-blur-xl border-b border-cyan-500/30 shadow-2xl z-50">
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 animate-in slide-in-from-top-5 duration-300">
             <div className="px-4 sm:px-6 lg:px-8 py-4">
               {/* Error Message */}
               {error && (
-                <div className="mb-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg backdrop-blur-sm">
-                  <p className="text-sm text-red-200">{error}</p>
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
               
               {/* User Info */}
-              <div className="flex items-center mb-4 p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
-                <img 
-                  src={userData.avatar} 
-                  alt={userData.name}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-cyan-400/50 mr-3"
-                />
+              <div className="flex items-center mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                {user?.profile_pic ? (
+                  <img 
+                    src={`http://localhost:8080${user.profile_pic}`} 
+                    alt={userData.name}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-[#DC143C]/30 mr-3"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-[#DC143C] flex items-center justify-center mr-3">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
                 <div>
-                  <p className="text-sm font-medium text-cyan-200">{userData.name}</p>
+                  <p className="text-sm font-medium text-blue-900">{userData.name}</p>
+                  <p className="text-xs text-gray-500">@{user?.username}</p>
                 </div>
               </div>
 
@@ -166,53 +297,56 @@ const Header = () => {
                 <Link 
                   to="/" 
                   onClick={closeMobileMenu}
-                  className="flex items-center px-3 py-3 text-base font-medium text-cyan-200 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all duration-300 border border-transparent hover:border-cyan-500/30"
+                  className="flex items-center px-3 py-3 text-base font-medium text-blue-900 hover:text-[#DC143C] hover:bg-[#DC143C]/5 rounded-lg transition-all duration-300 border border-transparent hover:border-[#DC143C]/20"
                 >
                   <Home className="w-5 h-5 mr-3" />
                   Home
                 </Link>
+                
                 <Link 
                   to="/notes" 
                   onClick={closeMobileMenu}
-                  className="flex items-center px-3 py-3 text-base font-medium text-cyan-200 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all duration-300 border border-transparent hover:border-cyan-500/30"
+                  className="flex items-center px-3 py-3 text-base font-medium text-blue-900 hover:text-[#DC143C] hover:bg-[#DC143C]/5 rounded-lg transition-all duration-300 border border-transparent hover:border-[#DC143C]/20"
                 >
                   <FileText className="w-5 h-5 mr-3" />
                   My Notes
                 </Link>
+                
                 <Link 
-                  to="/create" 
+                  to="/create-note" 
                   onClick={closeMobileMenu}
-                  className="flex items-center px-3 py-3 text-base font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg transition-all duration-300 hover:scale-105 border border-cyan-400/50"
+                  className="flex items-center px-3 py-3 text-base font-medium text-white bg-gradient-to-r from-blue-600 to-[#DC143C] rounded-lg transition-all duration-300 hover:scale-105 border border-transparent"
                 >
                   <Plus className="w-5 h-5 mr-3" />
                   Create Note
                 </Link>
 
-                {/* Mobile Notifications */}
-                <div className="flex items-center justify-between px-3 py-3 text-base font-medium text-cyan-200 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all duration-300 border border-transparent hover:border-cyan-500/30">
+                {/* Mobile Search in Menu */}
+                <button 
+                  onClick={() => {
+                    closeMobileMenu();
+                    toggleSearch();
+                  }}
+                  className="flex items-center justify-between w-full text-left px-3 py-3 text-base font-medium text-blue-900 hover:text-[#DC143C] hover:bg-[#DC143C]/5 rounded-lg transition-all duration-300 border border-transparent hover:border-[#DC143C]/20"
+                >
                   <div className="flex items-center">
-                    <Bell className="w-5 h-5 mr-3" />
-                    Notifications
+                    <Search className="w-5 h-5 mr-3" />
+                    Search
                   </div>
-                  {userData.notifications > 0 && (
-                    <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse border border-cyan-200">
-                      {userData.notifications}
-                    </span>
-                  )}
-                </div>
+                </button>
 
                 {/* Mobile Logout */}
                 <button 
                   onClick={handleLogout}
                   disabled={loading}
-                  className="flex items-center justify-between w-full text-left px-3 py-3 text-base font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-300 border border-transparent hover:border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-between w-full text-left px-3 py-3 text-base font-medium text-blue-900 hover:text-white hover:bg-[#DC143C] rounded-lg transition-all duration-300 border border-transparent hover:border-[#DC143C] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center">
                     <LogOut className="w-5 h-5 mr-3" />
                     {loading ? "Logging out..." : "Logout"}
                   </div>
                   {loading && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   )}
                 </button>
               </div>
@@ -224,9 +358,9 @@ const Header = () => {
       {/* Global Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gradient-to-r from-gray-900/95 to-blue-900/95 backdrop-blur-lg border border-cyan-500/30 p-6 rounded-2xl shadow-2xl flex items-center space-x-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
-            <span className="text-cyan-200 text-lg">Logging out...</span>
+          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-2xl flex items-center space-x-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#DC143C]"></div>
+            <span className="text-blue-900 text-lg">Logging out...</span>
           </div>
         </div>
       )}
