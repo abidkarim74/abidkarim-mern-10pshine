@@ -154,3 +154,61 @@ export const delete_note = async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ error: "Internal server error!" });
   }
 };
+
+
+
+
+export const toogle_like_note = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'You are not authenticated!' });
+      return;
+    }
+    
+    const { note_id } = req.body;
+    
+    if (!note_id) {
+      res.status(400).json({ error: 'Note ID is required!' });
+      return;
+    }
+
+    const userId = req.user.id;
+
+    const noteExists = await Note.findById(note_id);
+
+    if (!noteExists) {
+      res.status(404).json({ error: 'Note not found!' });
+      return;
+    }
+
+    const alreadyLiked = noteExists.likers.some((id: any) => 
+      id.toString() === userId.toString()
+    );
+
+    let updatedNote;
+
+    if (alreadyLiked) {
+      updatedNote = await Note.findByIdAndUpdate(
+        note_id,
+        { $pull: { likers: userId } },
+        { new: true }
+      );
+    } else {
+      updatedNote = await Note.findByIdAndUpdate(
+        note_id,
+        { $addToSet: { likers: userId } },
+        { new: true }
+      );
+    }
+
+    res.status(200).json({ 
+      message: alreadyLiked ? 'Note unliked successfully!' : 'Note liked successfully!',
+      liked: !alreadyLiked,
+      likesCount: updatedNote?.likers.length || 0
+    });
+
+  } catch (err: any) {
+    console.log(err.message);
+    res.status(500).json({ error: 'Internal server error!' });
+  }
+}
