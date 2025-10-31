@@ -9,6 +9,7 @@ import cors from 'cors';
 import notes_router from './routes/notes_routes.js';
 import path from 'path';
 import { app, mainServer } from './socket/socketio.js';
+import notification_router from './routes/notifications_routes.js';
 
 
 dotenv.config()
@@ -32,6 +33,7 @@ app.use(morgan('dev'));
 
 app.use('/api/auth', auth_router);
 app.use('/api/notes', notes_router);
+app.use('/api/notifications', notification_router);
 
 
 mainServer.listen(PORT, () => {
