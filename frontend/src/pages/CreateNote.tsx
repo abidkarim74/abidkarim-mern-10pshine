@@ -3,43 +3,17 @@ import { postRequest } from "../api/requests";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Save, ArrowLeft, Sparkles, Type, Zap } from "lucide-react";
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-
 
 const CreateNote = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
-
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
   const [noteData, setNoteData] = useState({
     title: "",
     content: "",
-    contentHtml: ""
-  });
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Link.configure({
-        openOnClick: false,
-      }),
-    ],
-    content: '',
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-
-      const text = editor.getText();
-      setNoteData(prev => ({
-        ...prev,
-        content: text,
-        contentHtml: html
-      }));
-    },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,13 +32,11 @@ const CreateNote = () => {
     try {
       setLoading(true);
       setError(null);
-      
       setSuccess(null);
 
       await postRequest("/notes/create-note", {
         title: noteData.title.trim(),
         content: noteData.content.trim(),
-        contentHtml: noteData.contentHtml
       });
 
       setSuccess("Your note has been created successfully!");
@@ -72,12 +44,7 @@ const CreateNote = () => {
       setNoteData({
         title: "",
         content: "",
-        contentHtml: ""
       });
-
-      if (editor) {
-        editor.commands.clearContent();
-      }
 
       setTimeout(() => {
         navigate("/my-notes");
@@ -98,19 +65,15 @@ const CreateNote = () => {
     }));
   };
 
-  const addLink = () => {
-    const url = window.prompt('URL');
-    if (url) {
-      editor?.chain().focus().setLink({ href: url }).run();
-    }
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNoteData(prev => ({
+      ...prev,
+      content: e.target.value
+    }));
   };
 
   const characterCount = noteData.content.length;
   const maxCharacters = 2000;
-
-  if (!editor) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-8">
@@ -207,80 +170,13 @@ const CreateNote = () => {
               </div>
               
               <div className="relative">
-                {/* Toolbar */}
-                <div className="flex flex-wrap items-center space-x-1 bg-gray-50 rounded-t-lg p-3 border-2 border-gray-300 border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => editor.chain().focus().toggleBold().run()}
-                    className={`p-2 rounded-lg transition-colors ${
-                      editor.isActive('bold') 
-                        ? 'text-white bg-blue-600' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                    title="Bold"
-                  >
-                    <strong>B</strong>
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                    className={`p-2 rounded-lg transition-colors ${
-                      editor.isActive('italic') 
-                        ? 'text-white bg-blue-600' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                    title="Italic"
-                  >
-                    <em>I</em>
-                  </button>
-                  
-                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                  
-                  <button
-                    type="button"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                    className={`p-2 rounded-lg transition-colors ${
-                      editor.isActive('heading', { level: 2 }) 
-                        ? 'text-white bg-blue-600' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                    title="Heading"
-                  >
-                    H2
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    className={`p-2 rounded-lg transition-colors ${
-                      editor.isActive('bulletList') 
-                        ? 'text-white bg-blue-600' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                    title="Bullet List"
-                  >
-                    • List
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={addLink}
-                    className={`p-2 rounded-lg transition-colors ${
-                      editor.isActive('link') 
-                        ? 'text-white bg-blue-600' 
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                    title="Add Link"
-                  >
-                    Link
-                  </button>
-                </div>
-
-                {/* Editor */}
-                <EditorContent 
-                  editor={editor} 
-                  className="min-h-64 bg-white border-2 border-gray-300 rounded-b-lg px-6 py-4 text-gray-800 transition-all duration-300 resize-none text-lg font-normal leading-relaxed overflow-y-auto prose prose-lg max-w-none focus-within:border-[#DC143C]"
+                <textarea
+                  value={noteData.content}
+                  onChange={handleContentChange}
+                  placeholder="Write your amazing thoughts here... "
+                  className="w-full min-h-64 bg-white border-2 border-gray-300 rounded-lg px-6 py-4 text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 resize-none text-lg font-normal leading-relaxed"
+                  disabled={loading || !!success}
+                  maxLength={maxCharacters}
                 />
                 
                 {characterCount > 0 && characterCount < 100 && (
@@ -292,18 +188,7 @@ const CreateNote = () => {
                 )}
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="text-blue-800 text-sm font-medium mb-2">Rich Text Editor Features:</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-700">
-                  <div>• <strong>Bold, Italic</strong> - Text formatting</div>
-                  <div>• <strong>Headings</strong> - Section headers</div>
-                  <div>• <strong>Lists</strong> - Bullet points</div>
-                  <div>• <strong>Links</strong> - Add clickable URLs</div>
-                </div>
-                <p className="text-blue-600 text-xs mt-2 font-medium">
-                  All formatting will be saved and displayed beautifully!
-                </p>
-              </div>
+              
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-gray-200">
@@ -343,16 +228,16 @@ const CreateNote = () => {
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-6 h-6 text-blue-600" />
             </div>
-            <h4 className="text-blue-900 font-semibold mb-2">Rich Formatting</h4>
-            <p className="text-gray-600 text-sm">Headers, bold, italic, lists and links</p>
+            <h4 className="text-blue-900 font-semibold mb-2">Simple & Clean</h4>
+            <p className="text-gray-600 text-sm">Focus on your content without distractions</p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 text-center">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Zap className="w-6 h-6 text-[#DC143C]" />
             </div>
-            <h4 className="text-blue-900 font-semibold mb-2">Modern Editor</h4>
-            <p className="text-gray-600 text-sm">Clean interface with essential tools</p>
+            <h4 className="text-blue-900 font-semibold mb-2">Fast Writing</h4>
+            <p className="text-gray-600 text-sm">Quick and efficient note creation</p>
           </div>
           
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 text-center">

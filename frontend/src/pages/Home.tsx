@@ -5,7 +5,7 @@ import { Calendar, MessageCircle, Heart, Clock, Eye } from "lucide-react";
 import { useSearch } from "../context/searchContext";
 import { useAuth } from "../context/authContext";
 import { io } from "socket.io-client";
-
+import OnlineUsersCounter from "../components/OnlineUsers";
 
 const Home = () => {
   const { search_param } = useSearch();
@@ -19,6 +19,12 @@ const Home = () => {
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   const endpoint = "/notes/general-notes";
+
+  // Function to truncate content to 30 characters
+  const truncateContent = (content: string, maxLength: number = 30) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + '...';
+  };
 
   const fetchNotes = async (searchQuery?: string) => {
     try {
@@ -90,13 +96,12 @@ const Home = () => {
         );
       }
 
-      // Send socket notification when note is liked
       if (response.liked) {
-        // Find the liked note to get creator info
         const likedNote = notes?.find((note) => note._id === note_id);
+
         if (likedNote && likedNote.creator._id !== user._id) {
-          // Import socket.io client and emit event
           const socket = io("http://localhost:8080");
+
           socket.emit("send_like_notification", {
             recipientId: likedNote.creator._id,
             senderId: user._id,
@@ -223,6 +228,8 @@ const Home = () => {
           </div>
         )}
 
+        <OnlineUsersCounter></OnlineUsersCounter>
+
         {search_param && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 max-w-4xl mx-auto">
             <p className="text-blue-700 text-center font-medium">
@@ -274,30 +281,45 @@ const Home = () => {
                               )}
                             </div>
 
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-semibold text-gray-900 truncate">
                                 {note.creator.firstname} {note.creator.lastname}
                               </h3>
-                              <p className="text-gray-500 text-sm">
+                              <p className="text-gray-500 text-sm truncate">
                                 @{note.creator.username}
                               </p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="flex items-center text-gray-500 text-sm mb-1">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {formatDate(note.createdAt)}
+                          <div className="text-right flex-shrink-0 ml-3">
+                            <div className="flex items-center text-gray-500 text-sm mb-1 justify-end">
+                              <Calendar className="w-4 h-4 mr-1 flex-shrink-0" />
+                              <span className="truncate">{formatDate(note.createdAt)}</span>
                             </div>
-                            <div className="flex items-center text-gray-500 text-sm">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {formatTime(note.createdAt)}
+                            <div className="flex items-center text-gray-500 text-sm justify-end">
+                              <Clock className="w-4 h-4 mr-1 flex-shrink-0" />
+                              <span>{formatTime(note.createdAt)}</span>
                             </div>
                           </div>
                         </div>
 
-                        <p className="text-gray-800 text-lg leading-relaxed mb-4 line-clamp-3">
-                          {note.title}
-                        </p>
+                        {/* Note Title with proper text wrapping */}
+                        <div className="mb-3">
+                          <p className="text-gray-800 text-lg font-semibold leading-relaxed break-words">
+                            {note.title}
+                          </p>
+                        </div>
+
+                        {/* Note Content - Show only first 30 characters in list view */}
+                        <div className="mb-4">
+                          <p className="text-gray-600 leading-relaxed break-words">
+                            "{truncateContent(note.content)}"
+                          </p>
+                          {note.content.length > 30 && (
+                            <p className="text-gray-400 text-xs mt-1">
+                              Click to read full note
+                            </p>
+                          )}
+                        </div>
 
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                           <div className="flex items-center space-x-4 text-gray-500">
@@ -371,11 +393,11 @@ const Home = () => {
                         </span>
                       )}
                     </div>
-                    <h4 className="text-base font-bold mb-1">
+                    <h4 className="text-base font-bold mb-1 truncate px-2">
                       {selectedNote.creator.firstname}{" "}
                       {selectedNote.creator.lastname}
                     </h4>
-                    <p className="text-white/80 text-xs">
+                    <p className="text-white/80 text-xs truncate px-2">
                       @{selectedNote.creator.username}
                     </p>
                   </div>
@@ -386,7 +408,7 @@ const Home = () => {
                         Note Title
                       </h5>
                       <div className="bg-gray-50 rounded p-3 border border-gray-200 mb-3">
-                        <p className="text-gray-900 text-base font-bold">
+                        <p className="text-gray-900 text-base font-bold break-words">
                           {selectedNote.title}
                         </p>
                       </div>
@@ -394,8 +416,8 @@ const Home = () => {
                       <h5 className="text-xs font-semibold text-gray-700 mb-1">
                         Note Content
                       </h5>
-                      <div className="bg-gray-50 rounded p-3 border border-gray-200">
-                        <p className="text-gray-800 text-sm leading-relaxed italic">
+                      <div className="bg-gray-50 rounded p-3 border border-gray-200 max-h-40 overflow-y-auto">
+                        <p className="text-gray-800 text-sm leading-relaxed break-words">
                           "{selectedNote.content}"
                         </p>
                       </div>
@@ -420,22 +442,22 @@ const Home = () => {
                             isNoteLiked(selectedNote) ? "fill-current" : ""
                           }`}
                         />
-                        <span>
+                        <span className="whitespace-nowrap">
                           {isNoteLiked(selectedNote) ? "Liked" : "Like"} •{" "}
                           {getLikesCount(selectedNote)}
                         </span>
                       </button>
 
                       <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div className="bg-blue-50 rounded p-2 text-center">
+                        <div className="bg-blue-50 rounded p-2 text-center min-w-0">
                           <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
-                          <div className="text-blue-900 font-medium">
+                          <div className="text-blue-900 font-medium truncate text-xs">
                             {formatDate(selectedNote.createdAt)}
                           </div>
                         </div>
-                        <div className="bg-red-50 rounded p-2 text-center">
+                        <div className="bg-red-50 rounded p-2 text-center min-w-0">
                           <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
-                          <div className="text-[#DC143C] font-medium">
+                          <div className="text-[#DC143C] font-medium truncate text-xs">
                             {formatTime(selectedNote.createdAt)}
                           </div>
                         </div>
@@ -503,11 +525,11 @@ const Home = () => {
                     </span>
                   )}
                 </div>
-                <h4 className="text-base font-bold mb-1">
+                <h4 className="text-base font-bold mb-1 truncate px-2">
                   {selectedNote.creator.firstname}{" "}
                   {selectedNote.creator.lastname}
                 </h4>
-                <p className="text-white/80 text-xs">
+                <p className="text-white/80 text-xs truncate px-2">
                   @{selectedNote.creator.username}
                 </p>
               </div>
@@ -518,7 +540,7 @@ const Home = () => {
                     Note Title
                   </h5>
                   <div className="bg-gray-50 rounded p-3 border border-gray-200 mb-3">
-                    <p className="text-gray-900 text-base font-bold">
+                    <p className="text-gray-900 text-base font-bold break-words">
                       {selectedNote.title}
                     </p>
                   </div>
@@ -526,8 +548,8 @@ const Home = () => {
                   <h5 className="text-xs font-semibold text-gray-700 mb-1">
                     Note Content
                   </h5>
-                  <div className="bg-gray-50 rounded p-3 border border-gray-200">
-                    <p className="text-gray-800 text-sm leading-relaxed italic">
+                  <div className="bg-gray-50 rounded p-3 border border-gray-200 max-h-32 overflow-y-auto">
+                    <p className="text-gray-800 text-sm leading-relaxed break-words">
                       "{selectedNote.content}"
                     </p>
                   </div>
@@ -552,22 +574,22 @@ const Home = () => {
                         isNoteLiked(selectedNote) ? "fill-current" : ""
                       }`}
                     />
-                    <span>
+                    <span className="whitespace-nowrap">
                       {isNoteLiked(selectedNote) ? "Liked" : "Like"} •{" "}
                       {getLikesCount(selectedNote)}
                     </span>
                   </button>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="bg-blue-50 rounded p-2 text-center">
+                    <div className="bg-blue-50 rounded p-2 text-center min-w-0">
                       <Calendar className="w-3 h-3 mx-auto mb-1 text-blue-600" />
-                      <div className="text-blue-900 font-medium">
+                      <div className="text-blue-900 font-medium truncate text-xs">
                         {formatDate(selectedNote.createdAt)}
                       </div>
                     </div>
-                    <div className="bg-red-50 rounded p-2 text-center">
+                    <div className="bg-red-50 rounded p-2 text-center min-w-0">
                       <Clock className="w-3 h-3 mx-auto mb-1 text-[#DC143C]" />
-                      <div className="text-[#DC143C] font-medium">
+                      <div className="text-[#DC143C] font-medium truncate text-xs">
                         {formatTime(selectedNote.createdAt)}
                       </div>
                     </div>

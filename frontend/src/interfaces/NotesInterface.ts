@@ -2,7 +2,9 @@ export interface Note {
   _id: string;
   content: string;
   createdAt: string;
-  title: string
+  title: string,
+  contentHtml: string; 
+
   creator: {
     firstname: string;
     lastname: string;
