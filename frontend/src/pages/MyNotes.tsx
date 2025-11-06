@@ -15,20 +15,24 @@ import {
 } from "lucide-react";
 import type { Note } from "../interfaces/NotesInterface";
 
+
 const MyNotes = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[] | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState<string>("");
   const [editContent, setEditContent] = useState<string>("");
   const [deleteConfirm, setDeleteConfirm] = useState<{
     show: boolean;
     noteId: string | null;
+    noteTitle: string;
     noteContent: string;
   }>({
     show: false,
     noteId: null,
+    noteTitle: "",
     noteContent: "",
   });
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -84,12 +88,23 @@ const MyNotes = () => {
     }
   };
 
+  const truncateContent = (content: string, maxLength: number = 100) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + "...";
+  };
+
   const handleEditNote = (note: Note) => {
     setEditingNoteId(note._id);
+    setEditTitle(note.title || "");
     setEditContent(note.content);
   };
 
   const handleSaveEdit = async (noteId: string) => {
+    if (!editTitle.trim()) {
+      setError("Note title cannot be empty!");
+      return;
+    }
+
     if (!editContent.trim()) {
       setError("Note content cannot be empty!");
       return;
@@ -98,10 +113,12 @@ const MyNotes = () => {
     try {
       setLoading(true);
       await putRequest(`/notes/update-note/${noteId}`, {
+        title: editTitle.trim(),
         content: editContent.trim(),
       });
 
       setEditingNoteId(null);
+      setEditTitle("");
       setEditContent("");
       fetchMyNotes();
     } catch (err: any) {
@@ -117,17 +134,16 @@ const MyNotes = () => {
 
   const handleCancelEdit = () => {
     setEditingNoteId(null);
+    setEditTitle("");
     setEditContent("");
   };
 
-  const handleDeleteClick = (noteId: string, noteContent: string) => {
+  const handleDeleteClick = (note: Note) => {
     setDeleteConfirm({
       show: true,
-      noteId,
-      noteContent:
-        noteContent.length > 50
-          ? noteContent.substring(0, 50) + "..."
-          : noteContent,
+      noteId: note._id,
+      noteTitle: note.title || "Untitled Note",
+      noteContent: truncateContent(note.content, 80),
     });
   };
 
@@ -137,7 +153,7 @@ const MyNotes = () => {
     try {
       setLoading(true);
       await deleteRequest(`/notes/delete-note/${deleteConfirm.noteId}`);
-      setDeleteConfirm({ show: false, noteId: null, noteContent: "" });
+      setDeleteConfirm({ show: false, noteId: null, noteTitle: "", noteContent: "" });
       fetchMyNotes();
     } catch (err) {
       setError("Failed to delete note. Please try again.");
@@ -147,12 +163,13 @@ const MyNotes = () => {
   };
 
   const closeDeleteModal = () => {
-    setDeleteConfirm({ show: false, noteId: null, noteContent: "" });
+    setDeleteConfirm({ show: false, noteId: null, noteTitle: "", noteContent: "" });
   };
 
   // Filter and sort notes
   const filteredAndSortedNotes = notes
     ?.filter((note) =>
+      note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchQuery.toLowerCase())
     )
     ?.sort((a, b) => {
@@ -227,7 +244,6 @@ const MyNotes = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             <Link
               to="/create-note"
@@ -247,7 +263,6 @@ const MyNotes = () => {
           </div>
         </div>
 
-        {/* Search and Filter Bar */}
         {notes && notes.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8">
             <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
@@ -256,7 +271,7 @@ const MyNotes = () => {
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search your notes..."
+                    placeholder="Search your notes by title or content..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300"
@@ -288,7 +303,6 @@ const MyNotes = () => {
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-8 max-w-2xl mx-auto">
             <p className="text-red-700 text-center">🚨 {error}</p>
@@ -298,13 +312,13 @@ const MyNotes = () => {
         {/* Notes Grid */}
         {filteredAndSortedNotes && filteredAndSortedNotes.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredAndSortedNotes.map((note, index) => (
+            {filteredAndSortedNotes.map((note) => (
               <div
                 key={note._id}
-                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105"
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 flex flex-col h-full"
               >
                 {editingNoteId === note._id ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 flex-1">
                     <div className="flex items-center justify-between">
                       <FileText className="w-6 h-6 text-blue-600" />
                       <div className="flex space-x-2">
@@ -325,14 +339,25 @@ const MyNotes = () => {
                       </div>
                     </div>
 
-                    <textarea
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full h-32 bg-white border-2 border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 resize-none text-sm"
-                      placeholder="Edit your note..."
-                      disabled={loading}
-                      autoFocus
-                    />
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full bg-white border-2 border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 font-semibold text-lg"
+                        placeholder="Note title..."
+                        disabled={loading}
+                        autoFocus
+                      />
+
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="w-full h-32 bg-white border-2 border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 resize-none"
+                        placeholder="Edit your note content..."
+                        disabled={loading}
+                      />
+                    </div>
 
                     <div className="flex justify-between items-center text-xs text-gray-500">
                       <span>{editContent.length}/1000 characters</span>
@@ -341,10 +366,14 @@ const MyNotes = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="mb-4">
+                    <div className="flex-1">
                       <div className="flex items-start justify-between mb-4">
-                        <FileText className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-                        <div className="flex space-x-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xl font-bold text-blue-900 truncate">
+                            {note.title || "Untitled Note"}
+                          </h3>
+                        </div>
+                        <div className="flex space-x-2 ml-2 flex-shrink-0">
                           <button
                             onClick={() => handleEditNote(note)}
                             className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200"
@@ -352,9 +381,7 @@ const MyNotes = () => {
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() =>
-                              handleDeleteClick(note._id, note.content)
-                            }
+                            onClick={() => handleDeleteClick(note)}
                             className="p-2 text-[#DC143C] hover:text-[#DC143C]/80 hover:bg-red-50 rounded-lg transition-all duration-200"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -362,10 +389,15 @@ const MyNotes = () => {
                         </div>
                       </div>
 
-                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <p className="text-gray-800 text-lg leading-relaxed font-medium">
-                          "{note.content}"
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
+                        <p className="text-gray-800 leading-relaxed">
+                          {truncateContent(note.content)}
                         </p>
+                        {note.content.length > 100 && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            {note.content.length} characters total
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -422,7 +454,6 @@ const MyNotes = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
       {deleteConfirm.show && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-auto border border-gray-200">
@@ -439,8 +470,11 @@ const MyNotes = () => {
                 Are you sure you want to delete this note?
               </p>
 
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-                <p className="text-red-700 text-sm italic leading-relaxed">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+                <h4 className="font-semibold text-blue-900 text-sm mb-1">
+                  {deleteConfirm.noteTitle}
+                </h4>
+                <p className="text-gray-700 text-sm italic leading-relaxed">
                   "{deleteConfirm.noteContent}"
                 </p>
               </div>

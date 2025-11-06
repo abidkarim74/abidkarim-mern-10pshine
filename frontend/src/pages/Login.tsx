@@ -1,6 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { postRequest } from '../api/requests';
-import { useNavigate } from 'react-router-dom';
 
 
 interface LoginFormData {
@@ -21,9 +20,7 @@ import { useAuth } from '../context/authContext';
 const Login = () => {
   const { setAccessToken } = useAuth();
   
-  const { setUser } = useAuth();
 
-  const navigate = useNavigate();
   const [formData, setFormData] = useState<LoginFormData>({
     username: '',
     password: '',
@@ -76,7 +73,6 @@ const Login = () => {
       [name]: fieldValue
     }));
 
-    // Clear error when user starts typing
     if (errors[name as keyof LoginErrors]) {
       setErrors(prev => ({
         ...prev,
@@ -105,7 +101,6 @@ const Login = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Mark all fields as touched
     const allTouched = {
       username: true,
       password: true,
@@ -148,13 +143,11 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 via-blue-900 to-crimson-700 px-4 py-8">
   <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 border-t-4 border-[#DC143C]">
     
-    {/* Header */}
     <div className="text-center mb-8">
       <h2 className="text-3xl font-bold text-blue-900">Welcome Back</h2>
       <p className="text-gray-600 mt-2">Please sign in to your account</p>
     </div>
 
-    {/* General Error */}
     {error && (
       <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-xl mb-6">
         <div className="flex items-center">
@@ -166,10 +159,8 @@ const Login = () => {
       </div>
     )}
 
-    {/* Form */}
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
 
-      {/* Username */}
       <div>
         <label htmlFor="username" className="block text-sm font-medium text-blue-900 mb-2">
           Username
@@ -197,7 +188,6 @@ const Login = () => {
         )}
       </div>
 
-      {/* Password */}
       <div>
         <label htmlFor="password" className="block text-sm font-medium text-blue-900 mb-2">
           Password
@@ -225,7 +215,6 @@ const Login = () => {
         )}
       </div>
 
-      {/* Remember / Forgot */}
       <div className="flex items-center justify-between">
         <label className="flex items-center cursor-pointer">
           <input type="checkbox" name="rememberMe" checked={formData.rememberMe} onChange={handleChange} className="hidden" />
@@ -245,7 +234,6 @@ const Login = () => {
         </a>
       </div>
 
-      {/* Submit */}
       <button
         type="submit"
         disabled={loading}
@@ -262,7 +250,6 @@ const Login = () => {
       </button>
     </form>
 
-    {/* Footer */}
     <div className="text-center mt-6">
       <p className="text-gray-600 text-sm">
         Don't have an account?{' '}
