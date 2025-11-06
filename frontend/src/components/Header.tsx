@@ -5,7 +5,7 @@ import { Bell, Menu, X, LogOut, Home, FileText, Plus, User, Search, Heart} from 
 import MainLoading from "./MainLoading";
 import { useSearch } from "../context/searchContext";
 import { useNotifications } from "../context/notificationContext";
-import NotificationBarSimple from "./notifications";
+import NotificationBarSimple from "./Notifications";
 
 
 const Header = () => {
