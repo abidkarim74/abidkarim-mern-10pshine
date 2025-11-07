@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react';
 import { X, Heart, Clock } from 'lucide-react';
 import { useNotifications } from '../context/notificationContext';
 
-
 const NotificationBarSimple = () => {
   const { notifications, unreadCount, markAsRead } = useNotifications();
   const [currentNotification, setCurrentNotification] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   const unreadNotifications = notifications.filter(notif => !notif.read);
+
+  const truncateTitle = (title: string, maxLength: number = 40) => {
+    if (!title) return '';
+    if (title.length <= maxLength) return title;
+    return title.substring(0, maxLength) + '...';
+  };
 
   useEffect(() => {
     if (unreadNotifications.length > 0) {
@@ -31,11 +36,19 @@ const NotificationBarSimple = () => {
     }
   }, [unreadNotifications, currentNotification, markAsRead]);
 
-  const handleClose = () => {
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     if (currentNotification && !currentNotification.read) {
       markAsRead(currentNotification._id);
     }
     setIsVisible(false);
+  };
+
+  const handleNotificationClick = () => {
+    // Don't close when clicking on the notification content
+    // Only close when clicking the X button
   };
 
   const formatTime = (timestamp: string) => {
@@ -56,7 +69,10 @@ const NotificationBarSimple = () => {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm animate-in slide-in-from-right duration-300">
+    <div 
+      className="fixed top-4 right-4 z-50 max-w-sm animate-in slide-in-from-right duration-300"
+      onClick={handleNotificationClick}
+    >
       <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
@@ -69,8 +85,8 @@ const NotificationBarSimple = () => {
             </p>
             
             {currentNotification.note?.title && (
-              <p className="text-xs text-gray-600 mt-1">
-                "{currentNotification.note.title}"
+              <p className="text-xs text-gray-600 mt-1 break-words">
+                "{truncateTitle(currentNotification.note.title)}"
               </p>
             )}
 

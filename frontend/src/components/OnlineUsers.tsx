@@ -7,6 +7,7 @@ import { useAuth } from "../context/authContext";
 const OnlineUsersCounter = () => {
   const [onlineUsers, setOnlineUsers] = useState<number>(0);
   const [isVisible, setIsVisible] = useState<boolean>(true);
+
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const { socket } = useNotifications();
   const { user } = useAuth();
@@ -21,7 +22,6 @@ const OnlineUsersCounter = () => {
 
     socket.on("getOnlineUsers", handleOnlineUsers);
 
-    // Request online users when component mounts
     socket.emit("requestOnlineUsers");
 
     return () => {
@@ -29,7 +29,7 @@ const OnlineUsersCounter = () => {
     };
   }, [socket]);
 
-  // Debug: Log socket status and user info
+
   useEffect(() => {
     console.log("Socket status:", {
       hasSocket: !!socket,
@@ -79,7 +79,6 @@ const OnlineUsersCounter = () => {
           </button>
         </div>
 
-        {/* Connection status indicator */}
         {!isConnected && (
           <div className="mt-2 text-xs text-red-500 text-center">
             Disconnected

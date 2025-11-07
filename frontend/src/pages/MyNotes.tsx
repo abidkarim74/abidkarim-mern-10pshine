@@ -1,6 +1,6 @@
 import { useAuth } from "../context/authContext";
 import { getRequest, deleteRequest, putRequest } from "../api/requests";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -12,9 +12,41 @@ import {
   X,
   Save,
   Search,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Quote,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { Note } from "../interfaces/NotesInterface";
 
+const NoteContentDisplay: React.FC<{ content: string }> = ({ content }) => {
+  const createMarkup = () => {
+    if (content.startsWith('<') && content.endsWith('>')) {
+      return { __html: content };
+    }
+    
+    const formattedContent = content
+      .split('\n')
+      .map(paragraph => paragraph.trim() ? `<p>${paragraph}</p>` : '<br>')
+      .join('');
+    
+    return { __html: formattedContent };
+  };
+
+  return (
+    <div 
+      className="note-content prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={createMarkup()}
+    />
+  );
+};
 
 const MyNotes = () => {
   const { user } = useAuth();
@@ -37,6 +69,9 @@ const MyNotes = () => {
   });
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const endpoint = "/notes/auth-notes";
 
@@ -88,15 +123,103 @@ const MyNotes = () => {
     }
   };
 
-  const truncateContent = (content: string, maxLength: number = 100) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + "...";
+  const getPlainTextContent = (html: string): string => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.textContent || tempDiv.innerText || '';
+  };
+
+  const truncateHTMLContent = (html: string, maxLength: number = 50): string => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    if (plainText.length <= maxLength) return html;
+    
+    let truncatedHTML = '';
+    let currentLength = 0;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    const traverseNodes = (node: Node) => {
+      if (currentLength >= maxLength) return;
+      
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || '';
+        const remaining = maxLength - currentLength;
+        
+        if (text.length <= remaining) {
+          truncatedHTML += text;
+          currentLength += text.length;
+        } else {
+          truncatedHTML += text.substring(0, remaining) + '...';
+          currentLength = maxLength;
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        const tagName = element.tagName.toLowerCase();
+        const attributes = Array.from(element.attributes)
+          .map(attr => `${attr.name}="${attr.value}"`)
+          .join(' ');
+        
+        truncatedHTML += `<${tagName}${attributes ? ' ' + attributes : ''}>`;
+        
+        for (let child of Array.from(element.childNodes)) {
+          traverseNodes(child);
+          if (currentLength >= maxLength) break;
+        }
+        
+        truncatedHTML += `</${tagName}>`;
+      }
+    };
+    
+    for (let child of Array.from(doc.body.childNodes)) {
+      traverseNodes(child);
+      if (currentLength >= maxLength) break;
+    }
+    
+    return truncatedHTML;
+  };
+
+  const toggleNoteExpansion = (noteId: string) => {
+    const newExpanded = new Set(expandedNotes);
+    if (newExpanded.has(noteId)) {
+      newExpanded.delete(noteId);
+    } else {
+      newExpanded.add(noteId);
+    }
+    setExpandedNotes(newExpanded);
+  };
+
+  const formatText = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    updateEditContent();
+    editorRef.current?.focus();
+  };
+
+  const updateEditContent = () => {
+    if (editorRef.current) {
+      setEditContent(editorRef.current?.innerHTML || "");
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    updateEditContent();
   };
 
   const handleEditNote = (note: Note) => {
     setEditingNoteId(note._id);
     setEditTitle(note.title || "");
     setEditContent(note.content);
+    
+    setTimeout(() => {
+      if (editorRef.current && note.content) {
+        editorRef.current.innerHTML = note.content;
+      }
+    }, 100);
   };
 
   const handleSaveEdit = async (noteId: string) => {
@@ -105,16 +228,25 @@ const MyNotes = () => {
       return;
     }
 
-    if (!editContent.trim()) {
+    const plainTextContent = getPlainTextContent(editContent);
+    if (!plainTextContent.trim()) {
       setError("Note content cannot be empty!");
       return;
     }
 
     try {
       setLoading(true);
+      
+      let formattedContent = editContent.trim();
+      
+      if (!formattedContent.startsWith('<') && !formattedContent.endsWith('>')) {
+        formattedContent = `<p>${formattedContent}</p>`;
+      }
+
       await putRequest(`/notes/update-note/${noteId}`, {
         title: editTitle.trim(),
-        content: editContent.trim(),
+        content: formattedContent,
+        plainText: plainTextContent.trim(),
       });
 
       setEditingNoteId(null);
@@ -139,11 +271,12 @@ const MyNotes = () => {
   };
 
   const handleDeleteClick = (note: Note) => {
+    const plainTextContent = getPlainTextContent(note.content);
     setDeleteConfirm({
       show: true,
       noteId: note._id,
       noteTitle: note.title || "Untitled Note",
-      noteContent: truncateContent(note.content, 80),
+      noteContent: truncateHTMLContent(plainTextContent, 80),
     });
   };
 
@@ -166,12 +299,70 @@ const MyNotes = () => {
     setDeleteConfirm({ show: false, noteId: null, noteTitle: "", noteContent: "" });
   };
 
-  // Filter and sort notes
+  const isCommandActive = (command: string, value?: string) => {
+    if (value) {
+      return document.queryCommandValue(command) === value;
+    }
+    return document.queryCommandState(command);
+  };
+
+  const toolbarButtons = [
+    { 
+      command: 'bold', 
+      icon: Bold, 
+      label: 'Bold'
+    },
+    { 
+      command: 'italic', 
+      icon: Italic, 
+      label: 'Italic'
+    },
+    { 
+      command: 'underline', 
+      icon: Underline, 
+      label: 'Underline'
+    },
+    { 
+      command: 'insertUnorderedList', 
+      icon: List, 
+      label: 'Bullet List'
+    },
+    { 
+      command: 'insertOrderedList', 
+      icon: ListOrdered, 
+      label: 'Numbered List'
+    },
+    { 
+      command: 'formatBlock', 
+      value: '<blockquote>', 
+      icon: Quote, 
+      label: 'Quote'
+    },
+    { 
+      command: 'justifyLeft', 
+      icon: AlignLeft, 
+      label: 'Align Left'
+    },
+    { 
+      command: 'justifyCenter', 
+      icon: AlignCenter, 
+      label: 'Align Center'
+    },
+    { 
+      command: 'justifyRight', 
+      icon: AlignRight, 
+      label: 'Align Right'
+    },
+  ];
+
   const filteredAndSortedNotes = notes
-    ?.filter((note) =>
-      note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    ?.filter((note) => {
+      const plainTextContent = getPlainTextContent(note.content);
+      return (
+        note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        plainTextContent.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    })
     ?.sort((a, b) => {
       if (sortBy === "newest") {
         return (
@@ -184,7 +375,7 @@ const MyNotes = () => {
       }
     });
 
-  if (loading && !deleteConfirm.show) {
+  if (loading && !deleteConfirm.show && !editingNoteId) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 flex items-center justify-center p-4">
         <div className="text-center">
@@ -203,7 +394,6 @@ const MyNotes = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-900 to-[#DC143C] bg-clip-text text-transparent mb-4">
             My EPIC Notes
@@ -237,8 +427,7 @@ const MyNotes = () => {
                 </h3>
                 <p className="text-gray-500 text-sm">@{user?.username}</p>
                 <p className="text-[#DC143C] text-sm font-semibold">
-                  {notes?.length || 0} {notes?.length === 1 ? "note" : "notes"}{" "}
-                  created
+                  {notes?.length || 0} {notes?.length === 1 ? "note" : "notes"} created
                 </p>
               </div>
             </div>
@@ -309,13 +498,13 @@ const MyNotes = () => {
           </div>
         )}
 
-        {/* Notes Grid */}
         {filteredAndSortedNotes && filteredAndSortedNotes.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filteredAndSortedNotes.map((note) => (
               <div
                 key={note._id}
-                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 flex flex-col h-full"
+                className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 flex flex-col min-h-0"
+                style={{ height: 'fit-content', minHeight: '280px' }}
               >
                 {editingNoteId === note._id ? (
                   <div className="space-y-4 flex-1">
@@ -350,23 +539,59 @@ const MyNotes = () => {
                         autoFocus
                       />
 
-                      <textarea
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="w-full h-32 bg-white border-2 border-gray-300 rounded-xl px-4 py-3 text-gray-800 placeholder-gray-400 focus:border-[#DC143C] focus:ring-2 focus:ring-[#DC143C]/20 transition-all duration-300 resize-none"
-                        placeholder="Edit your note content..."
-                        disabled={loading}
-                      />
+                      <div className="border border-gray-300 rounded-t-xl bg-gray-50 p-3 flex flex-wrap gap-2">
+                        {toolbarButtons.map((button) => (
+                          <button
+                            key={button.command}
+                            type="button"
+                            onClick={() => formatText(button.command, button.value)}
+                            className={`p-2 rounded-lg transition-all duration-200 ${
+                              isCommandActive(button.command, button.value)
+                                ? 'bg-blue-100 text-blue-700 border border-blue-300 shadow-inner' 
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 hover:border-gray-400'
+                            }`}
+                            title={button.label}
+                          >
+                            <button.icon className="w-4 h-4" />
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative">
+                        <div 
+                          className="border-2 border-t-0 border-gray-300 rounded-b-xl focus-within:border-[#DC143C] focus-within:ring-2 focus-within:ring-[#DC143C]/20 transition-all duration-300"
+                        >
+                          <div
+                            ref={editorRef}
+                            contentEditable={!loading}
+                            onInput={updateEditContent}
+                            onPaste={handlePaste}
+                            className="min-h-48 px-4 py-3 text-gray-800 outline-none text-base font-normal leading-relaxed prose prose-sm max-w-none"
+                            style={{
+                              fontFamily: 'inherit',
+                              lineHeight: '1.75',
+                              minHeight: '192px'
+                            }}
+                            data-placeholder="Edit your note content..."
+                          />
+                        </div>
+                        
+                        {!editContent && (
+                          <div className="absolute top-3 left-4 text-gray-400 pointer-events-none">
+                            Edit your note content...
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>{editContent.length}/1000 characters</span>
+                      <span>{getPlainTextContent(editContent).length}/2000 characters</span>
                       <span>Editing...</span>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="flex-1">
+                    <div className="flex-1 min-h-0">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-xl font-bold text-blue-900 truncate">
@@ -389,19 +614,40 @@ const MyNotes = () => {
                         </div>
                       </div>
 
-                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
-                        <p className="text-gray-800 leading-relaxed">
-                          {truncateContent(note.content)}
-                        </p>
-                        {note.content.length > 100 && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            {note.content.length} characters total
-                          </p>
-                        )}
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4 min-h-0">
+                        <div className="text-gray-700 text-sm leading-relaxed">
+                          {expandedNotes.has(note._id) ? (
+                            <div className="space-y-2">
+                              <NoteContentDisplay content={note.content} />
+                              <button
+                                onClick={() => toggleNoteExpansion(note._id)}
+                                className="flex items-center text-blue-600 hover:text-blue-700 text-xs font-medium mt-2"
+                              >
+                                <EyeOff className="w-3 h-3 mr-1" />
+                                Show Less
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="text-gray-600">
+                                <NoteContentDisplay content={truncateHTMLContent(note.content, 50)} />
+                              </div>
+                              {getPlainTextContent(note.content).length > 50 && (
+                                <button
+                                  onClick={() => toggleNoteExpansion(note._id)}
+                                  className="flex items-center text-blue-600 hover:text-blue-700 text-xs font-medium"
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  View Full Content
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-3 pt-4 border-t border-gray-200">
+                    <div className="space-y-3 pt-4 border-t border-gray-200 mt-auto">
                       <div className="flex items-center text-sm text-gray-600">
                         <Calendar className="w-4 h-4 mr-2" />
                         <span>{formatDate(note.createdAt)}</span>

@@ -20,10 +20,35 @@ const Home = () => {
 
   const endpoint = "/notes/general-notes";
 
-  // Function to truncate content to 30 characters
-  const truncateContent = (content: string, maxLength: number = 30) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + '...';
+  const NoteContentDisplay: React.FC<{ content: string }> = ({ content }) => {
+    const createMarkup = () => {
+      if (content.startsWith('<') && content.endsWith('>')) {
+        return { __html: content };
+      }
+      
+      const formattedContent = content
+        .split('\n')
+        .map(paragraph => paragraph.trim() ? `<p>${paragraph}</p>` : '<br>')
+        .join('');
+      
+      return { __html: formattedContent };
+    };
+
+    return (
+      <div 
+        className="note-content prose prose-sm max-w-none"
+        dangerouslySetInnerHTML={createMarkup()}
+      />
+    );
+  };
+
+  const truncateHTMLContent = (html: string, maxLength: number = 30): string => {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substring(0, maxLength) + '...';
   };
 
   const fetchNotes = async (searchQuery?: string) => {
@@ -302,18 +327,16 @@ const Home = () => {
                           </div>
                         </div>
 
-                        {/* Note Title with proper text wrapping */}
                         <div className="mb-3">
                           <p className="text-gray-800 text-lg font-semibold leading-relaxed break-words">
                             {note.title}
                           </p>
                         </div>
 
-                        {/* Note Content - Show only first 30 characters in list view */}
                         <div className="mb-4">
-                          <p className="text-gray-600 leading-relaxed break-words">
-                            "{truncateContent(note.content)}"
-                          </p>
+                          <div className="text-gray-600 leading-relaxed break-words text-sm">
+                            <NoteContentDisplay content={truncateHTMLContent(note.content, 30)} />
+                          </div>
                           {note.content.length > 30 && (
                             <p className="text-gray-400 text-xs mt-1">
                               Click to read full note
@@ -417,9 +440,9 @@ const Home = () => {
                         Note Content
                       </h5>
                       <div className="bg-gray-50 rounded p-3 border border-gray-200 max-h-40 overflow-y-auto">
-                        <p className="text-gray-800 text-sm leading-relaxed break-words">
-                          "{selectedNote.content}"
-                        </p>
+                        <div className="text-gray-800 text-sm leading-relaxed break-words">
+                          <NoteContentDisplay content={selectedNote.content} />
+                        </div>
                       </div>
                     </div>
 
@@ -549,9 +572,9 @@ const Home = () => {
                     Note Content
                   </h5>
                   <div className="bg-gray-50 rounded p-3 border border-gray-200 max-h-32 overflow-y-auto">
-                    <p className="text-gray-800 text-sm leading-relaxed break-words">
-                      "{selectedNote.content}"
-                    </p>
+                    <div className="text-gray-800 text-sm leading-relaxed break-words">
+                      <NoteContentDisplay content={selectedNote.content} />
+                    </div>
                   </div>
                 </div>
 
