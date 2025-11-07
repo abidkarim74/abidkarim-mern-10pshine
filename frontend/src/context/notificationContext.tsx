@@ -4,7 +4,7 @@ import { useAuth } from './authContext';
 import { getRequest, putRequest } from '../api/requests';
 
 
-interface Notification {
+export interface Notification {
   _id: string;
   recipient: string;
   sender: {
