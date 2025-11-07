@@ -84,11 +84,11 @@ const NotificationBarSimple = () => {
               {currentNotification.message}
             </p>
             
-            {/* {currentNotification.note?.title && (
+            {currentNotification.note?.title && (
               <p className="text-xs text-gray-600 mt-1 break-words">
                 "{truncateTitle(currentNotification.note.title)}"
               </p>
-            )} */}
+            )}
 
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center space-x-1 text-xs text-gray-500">
