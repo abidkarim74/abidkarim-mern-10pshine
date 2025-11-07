@@ -1,9 +1,9 @@
-import { Note } from "../models/notes_models.js";
-import { AuthenticatedRequest } from "../interfaces/auth_interface.js";
+import { Note } from "../models/notes_models";
+import { AuthenticatedRequest } from "../interfaces/auth_interface";
 import { Response } from "express";
-import { getReceivedSocketId, io } from "../socket/socketio.js";
-import Notification from "../models/notification_models.js";
-import { User } from "../models/auth_models.js";
+import { getReceivedSocketId, io } from "../socket/socketio";
+import Notification from "../models/notification_models";
+import { User } from "../models/auth_models";
 
 
 export const auth_notes_list = async (req: AuthenticatedRequest, res: Response) => {
