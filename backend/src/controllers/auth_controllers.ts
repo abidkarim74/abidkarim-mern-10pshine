@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
-import { User } from "../models/auth_models";
-import { hash_password_func, verify_password } from "../services/hashing_services";
-import { generateAccessTokenFunc, generateRefreshTokenFunc } from "../services/token_services";
-import { verifyAsync, CustomJwtPayload, AuthenticatedRequest } from "../interfaces/auth_interface";
+import { User } from "../models/auth_models.js";
+import { hash_password_func, verify_password } from "../services/hashing_services.js";
+import { generateAccessTokenFunc, generateRefreshTokenFunc } from "../services/token_services.js";
+import { verifyAsync, CustomJwtPayload, AuthenticatedRequest } from "../interfaces/auth_interface.js";
 
 
 export const user_signup = async (req: Request, res: Response) => {

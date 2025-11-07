@@ -7,10 +7,10 @@ import { useSearch } from "../context/searchContext";
 import { useNotifications } from "../context/notificationContext";
 import NotificationBarSimple from "./Notifications";
 
-
 const Header = () => {
   const { logout, accessToken, user } = useAuth();
   const { setSearchParam } = useSearch();
+
   const { unreadCount, notifications, markAsRead, markAllAsRead } = useNotifications();
 
   const location = useLocation();
@@ -20,6 +20,7 @@ const Header = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -38,6 +39,7 @@ const Header = () => {
       setLoading(true);
       setError(null);
       await logout();
+      
     } catch (err) {
       setError("Failed to log out. Please try again.");
       console.error("Logout error:", err);
@@ -85,6 +87,7 @@ const Header = () => {
 
   const handleNotificationClick = (notificationId: string) => {
     markAsRead(notificationId);
+    // Don't close the notification dropdown when clicking on a notification
   };
 
   const formatTime = (timestamp: string) => {
